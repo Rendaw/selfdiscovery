@@ -1,0 +1,11 @@
+COMPILEFLAGS = -std=c++0x -Wall -pedantic
+ifeq (@(DEBUG),true)
+	COMPILEFLAGS += -ggdb -O0
+else
+	COMPILEFLAGS += -O3
+endif
+
+!object = |> g++ $(COMPILEFLAGS) -c %f -o %o |> %o
+!executable = |> g++ $(COMPILEFLAGS) %f -o %o |> %o
+!lightarchive = |> ar rsT %o %f |> %o
+

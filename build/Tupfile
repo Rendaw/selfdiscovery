@@ -1,0 +1,7 @@
+include_rules
+
+SOURCES = ../self.cxx ../information.cxx ../location.cxx ../blank.cxx ../flag.cxx ../platform.cxx
+
+: foreach $(SOURCES) |> !object |> %B.o {objects}
+: {objects} ren-general/build/ren-general.a |> !executable |> selfdiscovery
+

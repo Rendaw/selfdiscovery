@@ -6,11 +6,16 @@
 #include "ren-general/arrangement.h"
 #include "ren-general/lifetime.h"
 
-struct InteractionError
-{
-	InteractionError(String const &Message) : Message(Message) {}
-	String Message;
-};
+#include "information.h"
+#include "blank.h"
+#include "flag.h"
+#include "platform.h"
+
+// Global information -- accessed by information and such
+Set<String> ProgramArguments;
+Information::AnchorImplementation<Platform> PlatformInformation;
+bool HelpMode = false;
+bool Verbose = false;
 
 class ChildInStream
 {
@@ -173,44 +178,6 @@ std::queue<String> ParseInput(String const &Input)
 	return std::move(Out);
 }
 
-namespace Information
-{
-	class Anchor
-	{
-		public:
-			virtual ~Anchor(void) {}
-			virtual void DisplayUserHelp(std::ostream &Out) = 0;
-			virtual void Respond(std::queue<String> &&Arguments, std::ostream &Out) = 0;
-	};
-
-	template <typename ItemClass> class AnchorImplementation : public Anchor
-	{
-		public:
-			AnchorImplementation(void) : AnchoredItem(nullptr) {}
-			~AnchorImplementation(void) { delete AnchoredItem; }
-			void DisplayUserHelp(std::ostream &Out) { ItemClass::DisplayUserHelp(Out); }
-			void Respond(std::queue<String> &&Arguments, std::ostream &Out) 
-			{ 
-				if (AnchoredItem == nullptr) AnchoredItem = new ItemClass;
-				AnchoredItem->Respond(std::move(Arguments), Out);
-			}
-		private:
-			ItemClass *AnchoredItem;
-	};
-	
-	template <typename ItemClass> std::pair<String, Anchor *> Pair(void)
-		{ return std::pair<String, Anchor *>(ItemClass::GetIdentifier(), new AnchorImplementation<ItemClass>()); }
-	
-	class Blank
-	{
-		public:
-			static String GetIdentifier(void) { return ""; }
-			static void DisplayUserHelp(std::ostream &Out) {}
-			void Respond(std::queue<String> &&Arguments, std::ostream &Out)
-				{ std::cerr << "Warning: The controller made a blank request.  Ignoring..." << std::endl; }
-	};
-}
-
 int main(int argc, char **argv)
 {
 	try {
@@ -218,19 +185,29 @@ int main(int argc, char **argv)
 		if (argc < 2) throw InteractionError("A controller program must be specified as the first argument.");
 		String Controller = argv[1];
 
-		Set<String> Arguments;
-		bool HelpMode = false;
 		for (unsigned int CurrentArgumentIndex = 2; CurrentArgumentIndex < (unsigned int)argc; CurrentArgumentIndex++)
 		{
 			String CurrentArgument = argv[CurrentArgumentIndex];
 			if ((CurrentArgument == "--help") || (CurrentArgument == "-h"))
+			{
 				HelpMode = true;
-			else Arguments.And(CurrentArgument);
+				std::cout << "Command line arguments:\n"
+					"\t--help|-h Shows this help.  If a controller is specified, shows help for information required by the controller as well.\n"
+					"\t--verbose|-v While information is gathered, various statistics and gathered data will be shown.\n"
+					"\n";
+			}
+			else if ((CurrentArgument == "--verbose") || (CurrentArgument == "-v"))
+			{
+				Verbose = true;
+			}
+			else ProgramArguments.And(CurrentArgument);
 		}
 		
 		// Prepare information management
-		DeleterMap<String, Information::Anchor> InformationItems; 
+		std::map<String, *Information::Anchor> InformationItems; 
 		InformationItems.insert(Information::Pair<Information::Blank>());
+		InformationItems.insert(Information::Pair<Information::Flag>());
+		InformationItems.insert(Information::Pair<Information::Platform>());
 		
 		// Spawn script subprocess
 		ChildInStream RequestStream;
@@ -279,7 +256,7 @@ int main(int argc, char **argv)
 					std::cerr << "Warning: The controller program made an empty request.  Ignoring..." << std::endl;
 				}
 
-				DeleterMap<String, Information::Anchor>::iterator Information = InformationItems.find(Identifier);
+				std::map<String, *Information::Anchor>::iterator Information = InformationItems.find(Identifier);
 				if (Information == InformationItems.end())
 					throw InteractionError("Error: Unknown request type \"" + Identifier + "\" for request #" + AsString(RequestIndex) + ".");
 

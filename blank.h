@@ -1,6 +1,10 @@
 #ifndef BLANK_H
 #define BLANK_H
 
+#include <queue>
+
+#include "ren-general/string.h"
+
 class Blank
 {
 	public:

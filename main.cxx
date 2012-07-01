@@ -1,21 +1,26 @@
+// TODO Rewrite help to take arguments - change flag to use first argument in help instead of NAME.
+// TODO Handle value overloading for platform and location (depend on platform).
+
 #include <iostream>
 #include <cstring>
 #include <queue>
+#include <unistd.h>
 
 #include "ren-general/string.h"
 #include "ren-general/arrangement.h"
 #include "ren-general/lifetime.h"
 
-#include "information.h"
+#include "shared.h"
+
+// Global information and information types - used in main loop and in individual info types and such
+Set<String> ProgramArguments;
+bool HelpMode = false;
+bool Verbose = false;
+
 #include "blank.h"
 #include "flag.h"
 #include "platform.h"
-
-// Global information -- accessed by information and such
-Set<String> ProgramArguments;
-Information::AnchorImplementation<Platform> PlatformInformation;
-bool HelpMode = false;
-bool Verbose = false;
+#include "location.h"
 
 class ChildInStream
 {
@@ -24,10 +29,10 @@ class ChildInStream
 
 		~ChildInStream(void) { assert(FileDescriptor >= 0); close(FileDescriptor); }
 
-		void Associate(int FileDescriptor) 
-		{ 
-			assert(this->FileDescriptor == -1); 
-			this->FileDescriptor = FileDescriptor; 
+		void Associate(int FileDescriptor)
+		{
+			assert(this->FileDescriptor == -1);
+			this->FileDescriptor = FileDescriptor;
 			Failed = false;
 		}
 
@@ -72,19 +77,19 @@ class ChildOutStream
 
 		~ChildOutStream(void) { assert(FileDescriptor >= 0); close(FileDescriptor); }
 
-		void Associate(int FileDescriptor) 
-		{ 
-			assert(this->FileDescriptor == -1); 
-			this->FileDescriptor = FileDescriptor; 
+		void Associate(int FileDescriptor)
+		{
+			assert(this->FileDescriptor == -1);
+			this->FileDescriptor = FileDescriptor;
 		}
 
 		void Write(String const &Contents = String())
 		{
 			struct WriteError : public InteractionError
-			{ 
-				WriteError(void) : 
-					InteractionError("Couldn't write to controller due to error " + AsString(errno) + ": " + strerror(errno)) 
-					{} 
+			{
+				WriteError(void) :
+					InteractionError("Couldn't write to controller due to error " + AsString(errno) + ": " + strerror(errno))
+					{}
 			};
 
 			if (!Contents.empty())
@@ -152,7 +157,7 @@ std::queue<String> ParseInput(String const &Input)
 			continue;
 		}
 
-		if (HotSlash) 
+		if (HotSlash)
 		{
 			HotSlash = false;
 			continue;
@@ -202,29 +207,38 @@ int main(int argc, char **argv)
 			}
 			else ProgramArguments.And(CurrentArgument);
 		}
-		
+
 		// Prepare information management
-		std::map<String, *Information::Anchor> InformationItems; 
-		InformationItems.insert(Information::Pair<Information::Blank>());
-		InformationItems.insert(Information::Pair<Information::Flag>());
-		InformationItems.insert(Information::Pair<Information::Platform>());
-		
+		std::map<String, Information::Anchor *> InformationItems;
+		Information::AnchorImplementation<Blank> BlankInformation;
+		InformationItems[Blank::GetIdentifier()] = &BlankInformation;
+		Information::AnchorImplementation<Flag> FlagInformation;
+		InformationItems[Flag::GetIdentifier()] = &FlagInformation;
+		Information::AnchorImplementation<Platform> PlatformInformation;
+		InformationItems[Platform::GetIdentifier()] = &PlatformInformation;
+		Information::AnchorImplementation<InstallBinDirectory> BinInstallInformation;
+		InformationItems[InstallBinDirectory::GetIdentifier()] = &BinInstallInformation;
+		Information::AnchorImplementation<InstallDataDirectory> DataInstallInformation;
+		InformationItems[InstallDataDirectory::GetIdentifier()] = &DataInstallInformation;
+		Information::AnchorImplementation<InstallGlobalConfigDirectory> ConfigInstallInformation;
+		InformationItems[InstallGlobalConfigDirectory::GetIdentifier()] = &ConfigInstallInformation;
+
 		// Spawn script subprocess
 		ChildInStream RequestStream;
 		ChildOutStream ResponseStream;
 		if (Controller != "--")
 			ForkController(Controller, RequestStream, ResponseStream);
-		else 
+		else
 		{
 			// Allow the user to directly interact with self discovery if they specify "--" as the controller
 			RequestStream.Associate(0);
 			ResponseStream.Associate(1);
 		}
-		
+
 		// Send initial paramers/header message
 		if (HelpMode) ResponseStream.Write("help");
 		ResponseStream.Write();
-		
+
 		// Read and process requests
 		String FullLine;
 		String RawLine;
@@ -251,12 +265,7 @@ int main(int argc, char **argv)
 					Line.pop();
 				}
 
-				if (Identifier.empty())
-				{
-					std::cerr << "Warning: The controller program made an empty request.  Ignoring..." << std::endl;
-				}
-
-				std::map<String, *Information::Anchor>::iterator Information = InformationItems.find(Identifier);
+				std::map<String, Information::Anchor *>::iterator Information = InformationItems.find(Identifier);
 				if (Information == InformationItems.end())
 					throw InteractionError("Error: Unknown request type \"" + Identifier + "\" for request #" + AsString(RequestIndex) + ".");
 
@@ -265,7 +274,7 @@ int main(int argc, char **argv)
 					Information->second->DisplayUserHelp(std::cout);
 					std::cout << std::endl;
 				}
-				else 
+				else
 				{
 					StringStream Out;
 					Information->second->Respond(std::move(Line), Out);
@@ -280,7 +289,12 @@ int main(int argc, char **argv)
 		std::cerr << "Self discovery failed with error: " << Error.Message << std::endl;
 		return 1;
 	}
-	
+	catch (ControllerError &Error)
+	{
+		std::cerr << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Error.Message << std::endl;
+		return 1;
+	}
+
 	// Done! :)
 	return 0;
 }

@@ -1,5 +1,9 @@
 #include "flag.h"
 
+#include "ren-general/arrangement.h"
+
+#include "shared.h"
+
 extern Set<String> ProgramArguments;
 
 String Flag::GetIdentifier(void) { return "flag"; }
@@ -36,7 +40,7 @@ void Flag::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	else Found = true;
 
 	if (Found == true)
-		Out << "true " << value << "\n\n";
+		Out << "true " << Value << "\n\n";
 	else Out << "false" << "\n\n";
 }
 

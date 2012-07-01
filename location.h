@@ -1,7 +1,11 @@
 #ifndef LOCATION_H
 #define LOCATION_H
 
-class LocationBinDirectory
+#include <queue>
+
+#include "ren-general/string.h"
+
+class InstallBinDirectory
 {
 	public:
 		static String GetIdentifier(void);
@@ -9,7 +13,7 @@ class LocationBinDirectory
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };
 
-class LocationDataDirectory
+class InstallDataDirectory
 {
 	public:
 		static String GetIdentifier(void);
@@ -17,7 +21,7 @@ class LocationDataDirectory
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };
 
-class LocationGlobalConfigDirectory
+class InstallGlobalConfigDirectory
 {
 	public:
 		static String GetIdentifier(void);

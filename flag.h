@@ -1,6 +1,10 @@
 #ifndef FLAG_H
 #define FLAG_H
 
+#include <queue>
+
+#include "ren-general/string.h"
+
 class Flag
 {
 	public:

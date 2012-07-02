@@ -42,7 +42,7 @@ class Platform
 
 		Platform(void);
 		static String GetIdentifier(void);
-		static void DisplayUserHelp(std::ostream &Out);
+		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 		String const &GetFamily(void) const;
 		String const &GetMember(void) const;

@@ -4,17 +4,23 @@
 
 #include "shared.h"
 
+static String GetProjectName(std::queue<String> &Arguments)
+	{ return GetNextArgument(Arguments, "project name"); }
+
 String InstallBinDirectory::GetIdentifier(void) { return "install-binary-directory"; }
 
-void InstallBinDirectory::DisplayUserHelp(std::ostream &Out)
+void InstallBinDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	Out << "\t" << GetIdentifier() << " PROJECTNAME (x64)\n"
-		"\tResponse: DIRECTORY\n"
-		"Returns the system-defined binary installation directory for the project PROJECTNAME.  The location may or not exist, but it is appropriate to create it and write binary files into it.  Specify \"x64\" if the binaries are 64-bit, to assist determination of the correct location.\n\n";
+	Out << "\t" << "prefix=LOCATION\n"
+		"Overrides the default binary installation directory to use LOCATION/bin.\n\n";
+	Out << "\t" << GetIdentifier() << "=LOCATION\n"
+		"Overrides the default binary installation directory to use LOCATION.  If the 64-bit binary location is not overridden, LOCATION is also used for the 64-bit binary installation directory.\n\n";
+	Out << "\t" << GetIdentifier() << "-x64=LOCATION\n"
+		"Overrides the default 64-bit binary installation directory to use LOCATION.\n\n";
 }
 
 #ifdef _WIN32
-static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project)
+static void DumpProjectInstallDirectory(Set<String> const &Flags, std::ostream &Out, String const &Project)
 {
 	PWSTR PathResult;
 	HRESULT Result = SHGetKnownFolderPath(Flags.Contains("x64") ? FOLDERID_ProgramFilesX64 : FOLDERID_ProgramFiles, 0, nullptr, &PathResult);
@@ -27,18 +33,42 @@ static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project
 
 void InstallBinDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	if (Arguments.empty())
-		throw ControllerError("install-bin-directory requires a project name.");
-	String ProjectName = Arguments.front();
-	Arguments.pop();
+	String ProjectName = GetProjectName(Arguments);
 	Set<String> Flags;
 	while (!Arguments.empty())
 	{
 		Flags.And(Arguments.front());
 		Arguments.pop();
 	}
+
+	bool Is64Bit = Flags.Contains("x64");
+
+	if (Is64Bit)
+	{
+		std::pair<bool, String> OverrideBin64 = FindProgramArgument(GetIdentifier());
+		if (OverrideBin64.first)
+		{
+			Out << OverrideBin64.second << "\n\n";
+			return;
+		}
+	}
+
+	std::pair<bool, String> OverrideBin = FindProgramArgument(GetIdentifier());
+	if (OverrideBin.first)
+	{
+		Out << OverrideBin.second << "\n\n";
+		return;
+	}
+
+	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	if (OverridePrefix.first)
+	{
+		Out << OverridePrefix.second << "/bin\n\n";
+		return;
+	}
+	
 #ifdef _WIN32
-	DumpProjectInstallDirectory(Out, ProjectName);
+	DumpProjectInstallDirectory(Flags, Out, ProjectName);
 #else
 	Out << "/usr/local/bin\n\n";
 #endif
@@ -46,24 +76,30 @@ void InstallBinDirectory::Respond(std::queue<String> &&Arguments, std::ostream &
 
 String InstallDataDirectory::GetIdentifier(void) { return "install-data-directory"; }
 
-void InstallDataDirectory::DisplayUserHelp(std::ostream &Out)
+void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	Out << "\t" << GetIdentifier() << " PROJECTNAME (x64)\n"
-		"\tResponse: DIRECTORY\n"
-		"Returns the system-defined data installation directory for the project PROJECTNAME.  The location may or not exist, but it is appropriate to create it and write data files into it.  Specify \"x64\" if the project binaries are 64-bit, to assist determination of the correct location.\n\n";
+	String ProjectName = GetProjectName(Arguments);
+	Out << "\t" << "prefix=LOCATION\n"
+		"Overrides the default data installation directory to use LOCATION/share/" << ProjectName << ".\n\n";
+	Out << "\t" << GetIdentifier() << "=LOCATION\n"
+		"Overrides the default data installation directory to use LOCATION.\n\n";
 }
 
 void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	if (Arguments.empty())
-		throw ControllerError("install-data-directory requires a project name.");
-	String ProjectName = Arguments.front();
-	Arguments.pop();
-	Set<String> Flags;
-	while (!Arguments.empty())
+	String ProjectName = GetProjectName(Arguments);
+	std::pair<bool, String> OverrideData = FindProgramArgument(GetIdentifier());
+	if (OverrideData.first)
 	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
+		Out << OverrideData.second << "\n\n";
+		return;
+	}
+
+	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	if (OverridePrefix.first)
+	{
+		Out << OverridePrefix.second << "/share/" << ProjectName << "\n\n";
+		return;
 	}
 #ifdef _WIN32
 	DumpProjectInstallDirectory(Out, ProjectName);
@@ -74,15 +110,31 @@ void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream 
 
 String InstallGlobalConfigDirectory::GetIdentifier(void) { return "install-config-directory"; }
 
-void InstallGlobalConfigDirectory::DisplayUserHelp(std::ostream &Out)
+void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	Out << "\t" << GetIdentifier() << " PROJECTNAME\n"
-		"\tResponse: DIRECTORY\n"
-		"Returns the system-wide configuration file installation directory for the project PROJECTNAME.  The location may or not exist, but it is appropriate to create it and write configuration files into it.\n\n";
+	String ProjectName = GetProjectName(Arguments);
+	Out << "\t" << "prefix=LOCATION\n"
+		"Overrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".\n\n";
+	Out << "\t" << GetIdentifier() << "=LOCATION\n"
+		"Overrides the default data installation directory to use LOCATION.\n\n";
 }
 
 void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
+	String ProjectName = GetProjectName(Arguments);
+	std::pair<bool, String> OverrideConfig = FindProgramArgument(GetIdentifier());
+	if (OverrideConfig.first)
+	{
+		Out << OverrideConfig.second << "\n\n";
+		return;
+	}
+
+	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	if (OverridePrefix.first)
+	{
+		Out << OverridePrefix.second << "/etc/" << ProjectName << "\n\n";
+		return;
+	}
 #ifdef WINDOWS
 	PWSTR PathResult;
 	HRESULT Result = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &PathResult);
@@ -94,3 +146,4 @@ void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::
 	Out << "/etc" << "\n\n";
 #endif
 }
+

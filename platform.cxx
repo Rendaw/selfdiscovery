@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+#include "shared.h"
+
 extern bool Verbose;
 
 String const Platform::Families::Windows = "windows";
@@ -24,37 +26,43 @@ String const Platform::Members::NetBSD = "netbsd";
 
 Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown)
 {
+	std::pair<bool, String> OverrideFamily = FindProgramArgument("platform-family"),
+		OverrideMember = FindProgramArgument("platform-member");
+
 #ifdef _WIN32
 	Family = Families::Windows;
-	OSVERSIONINFOEX VersionInfo;
-	memset(&VersionInfo, 0, sizeof(VersionInfo));
-	VersionInfo.dwOSVersionInfoSize = sizeof(VersionInfo);
-	GetVersionEx(&VersionInfo);
-	if (VersionInfo.dwMajorVersion == 5)
+	if (!OverrideMember.first)
 	{
-		if (VersionInfo.dwMinorVersion == 0)
-			Member = Members::Windows2000;
-		else if ((VersionInfo.dwMinorVersion == 1) || ((VersionInfo.dwMinorVersion == 2) && (VersionInfo.dwProductType == VER_NT_WORKSTATION)))
-			Member = Members::WindowsXP;
-		else Member = Members::WindowsServer2003;
-	}
-	else if (VersionInfo.dwMajorVersion == 6)
-	{
-		if (VersionInfo.dwProductType == VER_NT_WORKSTATION)
+		OSVERSIONINFOEX VersionInfo;
+		memset(&VersionInfo, 0, sizeof(VersionInfo));
+		VersionInfo.dwOSVersionInfoSize = sizeof(VersionInfo);
+		GetVersionEx(&VersionInfo);
+		if (VersionInfo.dwMajorVersion == 5)
 		{
 			if (VersionInfo.dwMinorVersion == 0)
-				Member = Members::WindowsVista;
-			else if (VersionInfo.dwMinorVersion == 1)
-				Member = Members::Windows7;
-			else if (VersionInfo.dwMinorVersion == 2)
-				Member = Members::Windows8;
+				Member = Members::Windows2000;
+			else if ((VersionInfo.dwMinorVersion == 1) || ((VersionInfo.dwMinorVersion == 2) && (VersionInfo.dwProductType == VER_NT_WORKSTATION)))
+				Member = Members::WindowsXP;
+			else Member = Members::WindowsServer2003;
 		}
-		else
+		else if (VersionInfo.dwMajorVersion == 6)
 		{
-			if ((VersionInfo.dwMinorVersion == 0) || (VersionInfo.dwMinorVersion == 1))
-				Member = Members::WindowsServer2008;
-			else if (VersionInfo.dwMinorVersion == 2)
-				Member = Members::WindowsServer2012;
+			if (VersionInfo.dwProductType == VER_NT_WORKSTATION)
+			{
+				if (VersionInfo.dwMinorVersion == 0)
+					Member = Members::WindowsVista;
+				else if (VersionInfo.dwMinorVersion == 1)
+					Member = Members::Windows7;
+				else if (VersionInfo.dwMinorVersion == 2)
+					Member = Members::Windows8;
+			}
+			else
+			{
+				if ((VersionInfo.dwMinorVersion == 0) || (VersionInfo.dwMinorVersion == 1))
+					Member = Members::WindowsServer2008;
+				else if (VersionInfo.dwMinorVersion == 2)
+					Member = Members::WindowsServer2012;
+			}
 		}
 	}
 #elif __OpenBSD__
@@ -66,26 +74,28 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown)
 #elif __NetBSD__
 	Family = Families::BSD;
 	Member = Members::NetBSD;
-#elif sun
-#elif __APPLE__
 #else
 	// Linux
+	Family = Families::Linux;
 	if (FilePath("/etc/debian_version").Exists())
 		Member = Members::LinuxDebian;
 	if (FilePath("/etc/arch-release").Exists())
 		Member = Members::LinuxArch;
 #endif
+	if (OverrideFamily.first) Family = OverrideFamily.second;
+	if (OverrideMember.first) Member = OverrideMember.second;
+	assert(!Family.empty());
 	if (Verbose)
-		std::cout << "Detected platform: " << Family << ", " << Member << std::endl;
+		std::cout << "Determined platform: " << Family << ", " << Member << std::endl;
 }
 
 String Platform::GetIdentifier(void) { return "platform"; }
 
-void Platform::DisplayUserHelp(std::ostream &Out)
+void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	Out << "\t" << GetIdentifier() << "\n"
-		"\tResponse: FAMILY MEMBER\n"
-		"Identifies and returns specifics about the operating system.  Possible FAMILY and MEMBER values follow in the format \"family: member1, member2...\".  Note, if the family is not recognized, it is assumed to be linux.  If the member is not recognized, it will be listed as \"unknown\".\n"
+	Out << "\tplatform-family=FAMILY\n"
+		"\tplatform-member=MEMBER\n"
+		"Overrides the detected platform family and member with FAMILY and MEMBER.  Allowed FAMILY and MEMBER values follow in the format \"family: member1, member2...\".  Note, if the family is not recognized, it is assumed to be linux.  If the member is not recognized, it will be listed as \"unknown\".\n"
 		"\t" << Families::Windows << ": " << Members::Windows2000 << ", " << Members::WindowsXP << ", " << Members::WindowsServer2003 << ", " << Members::WindowsVista << ", " << Members::WindowsServer2008 << ", " << Members::Windows7 << ", " << Members::Windows8 << ", " << Members::WindowsServer2012 << "\n"
 		"\t" << Families::Linux << ": " << Members::LinuxDebian << ", " << Members::LinuxArch << "\n"
 		"\t" << Families::BSD << ": " << Members::OpenBSD << ", " << Members::FreeBSD << ", " << Members::NetBSD << "\n"
@@ -94,7 +104,6 @@ void Platform::DisplayUserHelp(std::ostream &Out)
 
 void Platform::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	assert(!Family.empty());
 	Out << Family << " " << Member << "\n\n";
 }
 

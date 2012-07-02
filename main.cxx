@@ -1,6 +1,3 @@
-// TODO Rewrite help to take arguments - change flag to use first argument in help instead of NAME.
-// TODO Handle value overloading for platform and location (depend on platform).
-
 #include <iostream>
 #include <cstring>
 #include <queue>
@@ -97,7 +94,8 @@ class ChildOutStream
 				int Wrote = write(FileDescriptor, Contents.c_str(), Contents.length());
 				if (Wrote == -1) throw WriteError();
 			}
-			int Wrote = write(FileDescriptor, "\n", 1);
+			char const NewLine[] = "\n";
+			int Wrote = write(FileDescriptor, NewLine, sizeof(NewLine) - 1);
 			if (Wrote == -1) throw WriteError();
 		}
 
@@ -131,10 +129,10 @@ void ForkController(String const &ControllerCommand, ChildInStream &InStream, Ch
 	else // Parent side
 	{
 		close(ToChild[ReadEnd]);
-		InStream.Associate(ToChild[WriteEnd]);
+		OutStream.Associate(ToChild[WriteEnd]);
 
 		close(FromChild[WriteEnd]);
-		OutStream.Associate(FromChild[ReadEnd]);
+		InStream.Associate(FromChild[ReadEnd]);
 	}
 #endif
 }
@@ -185,28 +183,20 @@ std::queue<String> ParseInput(String const &Input)
 
 int main(int argc, char **argv)
 {
+#ifdef NDEBUG
 	try {
+#endif // NDEBUG
 		// Process arguments, store in searchable map
 		if (argc < 2) throw InteractionError("A controller program must be specified as the first argument.");
 		String Controller = argv[1];
 
 		for (unsigned int CurrentArgumentIndex = 2; CurrentArgumentIndex < (unsigned int)argc; CurrentArgumentIndex++)
-		{
-			String CurrentArgument = argv[CurrentArgumentIndex];
-			if ((CurrentArgument == "--help") || (CurrentArgument == "-h"))
-			{
-				HelpMode = true;
-				std::cout << "Command line arguments:\n"
-					"\t--help|-h Shows this help.  If a controller is specified, shows help for information required by the controller as well.\n"
-					"\t--verbose|-v While information is gathered, various statistics and gathered data will be shown.\n"
-					"\n";
-			}
-			else if ((CurrentArgument == "--verbose") || (CurrentArgument == "-v"))
-			{
-				Verbose = true;
-			}
-			else ProgramArguments.And(CurrentArgument);
-		}
+			ProgramArguments.And(argv[CurrentArgumentIndex]);
+
+		if (FindProgramArgument("help").first) HelpMode = true;
+		if (FindProgramArgument("verbose").first) Verbose = true;
+		assert(!HelpMode); // DEBUG
+		assert(Verbose); // DEBUG
 
 		// Prepare information management
 		std::map<String, Information::Anchor *> InformationItems;
@@ -256,6 +246,7 @@ int main(int argc, char **argv)
 				++RequestIndex; // Requests start from 1
 
 				std::queue<String> Line = ParseInput(FullLine);
+				if (Verbose) std::cout << "Processing request: " << FullLine << std::endl;
 				FullLine = "";
 
 				String Identifier;
@@ -269,20 +260,31 @@ int main(int argc, char **argv)
 				if (Information == InformationItems.end())
 					throw InteractionError("Error: Unknown request type \"" + Identifier + "\" for request #" + AsString(RequestIndex) + ".");
 
-				if (HelpMode)
-				{
-					Information->second->DisplayUserHelp(std::cout);
-					std::cout << std::endl;
+#ifdef NDEBUG
+				try {
+#endif // NDEBUG
+					if (HelpMode)
+					{
+						Information->second->DisplayUserHelp(std::move(Line), std::cout);
+						std::cout << std::endl;
+					}
+					else
+					{
+						StringStream Out;
+						Information->second->Respond(std::move(Line), Out);
+						ResponseStream.Write(Out.str());
+						ResponseStream.Write();
+					}
+#ifdef NDEBUG
 				}
-				else
+				catch (ControllerError &Error)
 				{
-					StringStream Out;
-					Information->second->Respond(std::move(Line), Out);
-					ResponseStream.Write(Out.str());
-					ResponseStream.Write();
+					throw ControllerError("In request \"" + RawLine + "\": " + Error.Message);
 				}
+#endif // NDEBUG
 			}
 		}
+#ifdef NDEBUG
 	}
 	catch (InteractionError &Error)
 	{
@@ -294,6 +296,7 @@ int main(int argc, char **argv)
 		std::cerr << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Error.Message << std::endl;
 		return 1;
 	}
+#endif // NDEBUG
 
 	// Done! :)
 	return 0;

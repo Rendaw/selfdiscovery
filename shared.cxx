@@ -5,6 +5,49 @@
 InteractionError::InteractionError(String const &Message) : Message(Message) {}
 ControllerError::ControllerError(String const &Message) : Message(Message) {}
 
+std::queue<String> SplitString(String const &Input, Set<char> const &Delimiters, bool DropBlanks)
+{
+	std::queue<String> Out;
+
+	char const Slash = '\\';
+	char const Quote = '"';
+	bool HotSlash = false, HotQuote = false;
+	unsigned int WordStart = 0;
+	for (unsigned int CharacterIndex = 0; CharacterIndex < Input.length(); ++CharacterIndex)
+	{
+		char const &CurrentCharacter = Input[CharacterIndex];
+		if (CurrentCharacter == Slash)
+		{
+			HotSlash = !HotSlash;
+			continue;
+		}
+
+		if (HotSlash)
+		{
+			HotSlash = false;
+			continue;
+		}
+
+		if (CurrentCharacter == Quote)
+		{
+			HotQuote = !HotQuote;
+			continue;
+		}
+
+		if (!HotQuote && Delimiters.Contains(CurrentCharacter))
+		{
+			if (!DropBlanks || (CharacterIndex - WordStart > 1))
+				Out.push(Input.substr(WordStart, CharacterIndex));
+			WordStart = CharacterIndex + 1;
+		}
+	}
+
+	if (!DropBlanks || (Input.length() - WordStart > 1))
+		Out.push(Input.substr(WordStart, Input.length()));
+
+	return std::move(Out);
+}
+
 String GetNextArgument(std::queue<String> &Arguments, String const &Name)
 {
 	if (Arguments.empty())

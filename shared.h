@@ -17,6 +17,8 @@ struct ControllerError // When the controller misbehaves
 	String Message;
 };
 
+std::queue<String> SplitString(String const &Input, Set<String> const &Delimiters, bool DropBlanks);
+
 String GetNextArgument(std::queue<String> &Arguments, String const &Name);
 
 std::pair<bool, String> FindProgramArgument(String const &Name);

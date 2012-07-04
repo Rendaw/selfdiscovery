@@ -5,10 +5,20 @@
 
 #include "ren-general/string.h"
 
-class InstallBinDirectory
+class InstallExecutableDirectory
 {
 	public:
 		static String GetIdentifier(void);
+		static void DisplayControllerHelp(std::ostream &Out);
+		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
+		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
+};
+
+class InstallLibraryDirectory
+{
+	public:
+		static String GetIdentifier(void);
+		static void DisplayControllerHelp(std::ostream &Out);
 		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };
@@ -17,6 +27,7 @@ class InstallDataDirectory
 {
 	public:
 		static String GetIdentifier(void);
+		static void DisplayControllerHelp(std::ostream &Out);
 		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };
@@ -25,6 +36,7 @@ class InstallGlobalConfigDirectory
 {
 	public:
 		static String GetIdentifier(void);
+		static void DisplayControllerHelp(std::ostream &Out);
 		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };

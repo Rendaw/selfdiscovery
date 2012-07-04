@@ -1,11 +1,11 @@
-#ifndef BLANK_H
-#define BLANK_H
+static_assert(CXXCOMPILER_H == 0, "Include each header at most once per translation unit.");
+#define CXXCOMPILER_H 1
 
 #include <queue>
 
 #include "ren-general/string.h"
 
-class Blank
+class CXXCompiler
 {
 	public:
 		static String GetIdentifier(void);
@@ -13,6 +13,4 @@ class Blank
 		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
 };
-
-#endif // BLANK_H
 

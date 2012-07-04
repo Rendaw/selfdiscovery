@@ -18,14 +18,28 @@ String const Platform::Members::WindowsServer2008 = "winserver2008";
 String const Platform::Members::Windows7 = "win7";
 String const Platform::Members::Windows8 = "win8";
 String const Platform::Members::WindowsServer2012 = "winserver2012";
+String const Platform::Members::LinuxRedHat = "redhat";
 String const Platform::Members::LinuxDebian = "debian";
+String const Platform::Members::LinuxUbuntu = "ubuntu";
 String const Platform::Members::LinuxArch = "arch";
 String const Platform::Members::OpenBSD = "openbsd";
 String const Platform::Members::FreeBSD = "freebsd";
 String const Platform::Members::NetBSD = "netbsd";
+String const Platform::LinuxClasses::Invalid = "invalid";
+String const Platform::LinuxClasses::RedHat = "redhat";
+String const Platform::LinuxClasses::Debian = "debian";
+String const Platform::LinuxClasses::Slackware = "slackware";
+String const Platform::LinuxClasses::Arch;
 
-Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown)
+Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), ArchitectureBits(sizeof(void *) * 8), LinuxClass(LinuxClasses::Invalid)
 {
+	std::pair<bool, String> OverrideArchitecture = FindProgramArgument("arch");
+	if (OverrideArchitecture.first)
+	{
+		StringStream Value(OverrideArchitecture.second);
+		Value >> ArchitectureBits;
+	}
+
 	std::pair<bool, String> OverrideFamily = FindProgramArgument("platform-family"),
 		OverrideMember = FindProgramArgument("platform-member");
 
@@ -77,19 +91,42 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown)
 #else
 	// Linux
 	Family = Families::Linux;
-	if (FilePath("/etc/debian_version").Exists())
-		Member = Members::LinuxDebian;
-	if (FilePath("/etc/arch-release").Exists())
+	FileInput LSBRelease(FilePath("/etc/lsb-release"));
+	String LSBReleaseLine;
+	while (std::getline(LSBRelease, LSBReleaseLine))
+	{
+		if (LSBReleaseLine.find("Ubuntu")) Member = Members::LinuxUbuntu;
+		else if (LSBReleaseLine.find("Debian")) Member = Members::LinuxDebian;
+	}
+
+	if (!Member.empty()) {}
+	else if (FilePath("/etc/arch-release").Exists())
+	{
 		Member = Members::LinuxArch;
+	}
 #endif
 	if (OverrideFamily.first) Family = OverrideFamily.second;
 	if (OverrideMember.first) Member = OverrideMember.second;
+	if (Family == Families::Linux)
+	{
+		if (Member == Members::LinuxUbuntu) LinuxClass = LinuxClasses::Debian;
+		else if (Member == Members::LinuxDebian) LinuxClass = LinuxClasses::Debian;
+		else if (Member == Members::LinuxArch) LinuxClass = LinuxClasses::Arch;
+	}
 	assert(!Family.empty());
 	if (Verbose)
 		std::cout << "Determined platform: " << Family << ", " << Member << std::endl;
 }
 
 String Platform::GetIdentifier(void) { return "platform"; }
+		
+void Platform::DisplayControllerHelp(std::ostream &Out)
+{
+	Out << "\t" << GetIdentifier() << "\n"
+		"\tResult: FAMILY MEMBER ARCH\n"
+		"Determines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  Arch is the maximum bit depth for memory addresses on the system, such as 32 or 64.\n"
+		"The families
+}
 
 void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
@@ -100,14 +137,25 @@ void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out
 		"\t" << Families::Linux << ": " << Members::LinuxDebian << ", " << Members::LinuxArch << "\n"
 		"\t" << Families::BSD << ": " << Members::OpenBSD << ", " << Members::FreeBSD << ", " << Members::NetBSD << "\n"
 		"\n";
+	Out << "\tarch=32|64\n"
+		"Overrides the detected architecture.  This may also affect installation directories and the like.\n"
+		"\n";
 }
 
 void Platform::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	Out << Family << " " << Member << "\n\n";
+	Out << Family << " " << Member << " " << ArchitectureBits << "\n\n";
 }
 
 String const &Platform::GetFamily(void) const { return Family; }
 
 String const &Platform::GetMember(void) const { return Member; }
+		
+unsigned int Platform::GetArchitectureBits(void) const { return ArchitectureBits; }
+
+String const &Platform::GetLinuxClass(void) const 
+{ 
+	assert(Family == Families::Linux);
+	return LinuxClass; 
+}
 

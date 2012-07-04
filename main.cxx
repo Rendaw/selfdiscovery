@@ -18,6 +18,8 @@ bool Verbose = false;
 #include "flag.h"
 #include "platform.h"
 #include "location.h"
+		
+Information::AnchorImplementation<Platform> PlatformInformation;
 
 class ChildInStream
 {
@@ -137,50 +139,6 @@ void ForkController(String const &ControllerCommand, ChildInStream &InStream, Ch
 #endif
 }
 
-std::queue<String> ParseInput(String const &Input)
-{
-	std::queue<String> Out;
-
-	Set<char> const Whitespace = {' ', '\t', '\n', '\r'};
-	char const Slash = '\\';
-	char const Quote = '"';
-	bool HotSlash = false, HotQuote = false;
-	unsigned int WordStart = 0;
-	for (unsigned int CharacterIndex = 0; CharacterIndex < Input.length(); CharacterIndex++)
-	{
-		char const &CurrentCharacter = Input[CharacterIndex];
-		if (CurrentCharacter == Slash)
-		{
-			HotSlash = !HotSlash;
-			continue;
-		}
-
-		if (HotSlash)
-		{
-			HotSlash = false;
-			continue;
-		}
-
-		if (CurrentCharacter == Quote)
-		{
-			HotQuote = !HotQuote;
-			continue;
-		}
-
-		if (!HotQuote && Whitespace.Contains(CurrentCharacter))
-		{
-			if (CharacterIndex - WordStart > 1)
-				Out.push(Input.substr(WordStart, CharacterIndex));
-			WordStart = CharacterIndex;
-		}
-	}
-
-	if (Input.length() - WordStart > 1)
-		Out.push(Input.substr(WordStart, Input.length()));
-
-	return std::move(Out);
-}
-
 int main(int argc, char **argv)
 {
 #ifdef NDEBUG
@@ -204,10 +162,11 @@ int main(int argc, char **argv)
 		InformationItems[Blank::GetIdentifier()] = &BlankInformation;
 		Information::AnchorImplementation<Flag> FlagInformation;
 		InformationItems[Flag::GetIdentifier()] = &FlagInformation;
-		Information::AnchorImplementation<Platform> PlatformInformation;
 		InformationItems[Platform::GetIdentifier()] = &PlatformInformation;
-		Information::AnchorImplementation<InstallBinDirectory> BinInstallInformation;
-		InformationItems[InstallBinDirectory::GetIdentifier()] = &BinInstallInformation;
+		Information::AnchorImplementation<InstallExecutableDirectory> ExecutableInstallInformation;
+		InformationItems[InstallExecutableDirectory::GetIdentifier()] = &ExecutableInstallInformation;
+		Information::AnchorImplementation<InstallLibraryDirectory> LibraryInstallInformation;
+		InformationItems[InstallLibraryDirectory::GetIdentifier()] = &LibraryInstallInformation;
 		Information::AnchorImplementation<InstallDataDirectory> DataInstallInformation;
 		InformationItems[InstallDataDirectory::GetIdentifier()] = &DataInstallInformation;
 		Information::AnchorImplementation<InstallGlobalConfigDirectory> ConfigInstallInformation;
@@ -245,7 +204,7 @@ int main(int argc, char **argv)
 			{
 				++RequestIndex; // Requests start from 1
 
-				std::queue<String> Line = ParseInput(FullLine);
+				std::queue<String> Line = SplitString(FullLine, {' ', '\t', '\n', '\r'}, true);
 				if (Verbose) std::cout << "Processing request: " << FullLine << std::endl;
 				FullLine = "";
 

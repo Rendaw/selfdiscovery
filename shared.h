@@ -2,8 +2,12 @@
 #define SHARED_H
 
 #include <queue>
+#include <vector>
+#include <memory>
 
 #include "ren-general/string.h"
+#include "ren-general/arrangement.h"
+#include "ren-general/filesystem.h"
 
 struct InteractionError // When the system or user fails
 {
@@ -17,7 +21,7 @@ struct ControllerError // When the controller misbehaves
 	String Message;
 };
 
-std::queue<String> SplitString(String const &Input, Set<String> const &Delimiters, bool DropBlanks);
+std::queue<String> SplitString(String const &Input, Set<char> const &Delimiters, bool DropBlanks);
 
 String GetNextArgument(std::queue<String> &Arguments, String const &Name);
 
@@ -33,6 +37,7 @@ namespace Information
 	{
 		public:
 			virtual ~Anchor(void);
+			virtual void DisplayControllerHelp(std::ostream &Out) = 0;
 			virtual void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) = 0;
 			virtual void Respond(std::queue<String> &&Arguments, std::ostream &Out) = 0;
 	};
@@ -42,6 +47,10 @@ namespace Information
 		public:
 			AnchorImplementation(void) : AnchoredItem(nullptr) {}
 			~AnchorImplementation(void) { delete AnchoredItem; }
+			
+			void DisplayControllerHelp(std::ostream &Out) override
+				{ ItemClass::DisplayControllerHelp(Out); }
+			
 			void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) override
 			{
 				Out << "\tConfiguration for: " << ItemClass::GetIdentifier() << "\n";
@@ -58,5 +67,48 @@ namespace Information
 			ItemClass *AnchoredItem;
 	};
 }
+
+class SubprocessInStream
+{
+	public:
+		SubprocessInStream(void);
+		~SubprocessInStream(void);
+		void Associate(int FileDescriptor);
+		String ReadLine(void);
+		bool HasFailed(void);
+		void ReadToEnd(void);
+
+	private:
+		int FileDescriptor;
+		bool Failed;
+};
+
+class SubprocessOutStream
+{
+	public:
+		SubprocessOutStream(void);
+		~SubprocessOutStream(void);
+		void Associate(int FileDescriptor);
+		void Write(String const &Contents = String());
+	private:
+		int FileDescriptor;
+};
+
+class Subprocess
+{
+	public:
+		Subprocess(FilePath const &Execute, std::vector<String> const &Arguments);
+		SubprocessInStream In;
+		SubprocessOutStream Out;
+		void Kill(void);
+		int GetResult(void);
+	private:
+#ifdef _WIN32
+#else
+		pid_t ChildID;
+#endif
+		bool ResultRetrieved;
+		int Result;
+};
 
 #endif // SHARED_H

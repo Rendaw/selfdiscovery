@@ -1,26 +1,33 @@
 #include "program.h"
 
+#include <cstdlib>
+
+#include "shared.h"
+
+extern bool Verbose;
+
 String Program::GetIdentifier(void) { return "program"; }
 
 void Program::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " NAME\n"
 		"\tResult: LOCATION\n"
-		"Locates program NAME and returns the LOCATION.\n"
+		"\tLocates program NAME and returns the LOCATION.\n"
 		"\n";
 }
 
 void Program::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) 
 {
-	ProgramName = GetNextArgument(Arguments, "program name");
+	String ProgramName = GetNextArgument(Arguments, "program name");
 	Out << "\t" << GetIdentifier() << "-" << ProgramName << "=LOCATION\n"
-		"Override the detected location of " << ProgramName << " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected."
-		"\n\n";
+		"\tOverride the detected location of " << ProgramName << " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.\n"
+		"\n";
 }
 
 static std::vector<DirectoryPath> GetPathParts(void)
 {
-	std::vector<String> Out;
+	std::vector<DirectoryPath> Out;
+	String FullPATH = getenv("PATH");
 #ifdef _WIN32
 	std::queue<String> PathParts = SplitString(FullPATH, {';'}, true);
 #else
@@ -28,17 +35,25 @@ static std::vector<DirectoryPath> GetPathParts(void)
 #endif
 	while (!PathParts.empty())
 	{
-		Out.push_back(PathParts.front());
+		Out.push_back(DirectoryPath::Qualify(PathParts.front()));
 		PathParts.pop();
 	}
 	return std::move(Out);
 }
 
-Program::Program(void) : Paths(GetPathParts()) {}
+Program::Program(void) : Paths(GetPathParts()) 
+{
+	if (Verbose)
+	{
+		std::cout << "Directories checked when searching for installed programs:\n";
+		for (auto &Path : Paths)
+			std::cout << "\t" << Path << "\n";
+	}
+}
 
 void Program::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 {
-	ProgramName = GetNextArgument(Arguments, "program name");
+	String ProgramName = GetNextArgument(Arguments, "program name");
 	Set<String> Flags;
 	while (!Arguments.empty())
 	{
@@ -47,10 +62,10 @@ void Program::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	}
 
 	FilePath *Found = FindProgram(ProgramName);
-	if ((Found == nullptr) && !Flags.Contains["optional"])
+	if ((Found == nullptr) && !Flags.Contains("optional"))
 		throw InteractionError("Failed to find required program " + ProgramName);
 	
-	if (Found != nullptr) Out << Found->AsAbsolutePath();
+	if (Found != nullptr) Out << Found->AsAbsoluteString();
 	Out << "\n\n";
 }
 
@@ -64,9 +79,12 @@ FilePath *Program::FindProgram(String const &ProgramName)
 		std::pair<bool, String> OverrideProgram = FindProgramArgument(GetIdentifier() + "-" + ProgramName);
 		if (OverrideProgram.first)
 		{
-			FilePath OverridePath(OverrideProgram.second);
+			FilePath OverridePath(FilePath::Qualify(OverrideProgram.second));
 			if (OverridePath.Exists())
-				Programs[ProgramName] = std::move(NextFilePath);
+			{
+				if (Verbose) std::cout << "Found program " << ProgramName << " at user-specified location " << OverridePath << std::endl;
+				Programs[ProgramName] = new FilePath(OverridePath);
+			}
 		}
 		else
 		{
@@ -76,7 +94,8 @@ FilePath *Program::FindProgram(String const &ProgramName)
 				FilePath NextFilePath = NextPath.Select(ProgramName);
 				if (NextFilePath.Exists())
 				{
-					Programs[ProgramName] = std::move(NextFilePath);
+					if (Verbose) std::cout << "Found program " << ProgramName << " at " << NextFilePath << std::endl;
+					Programs[ProgramName] = new FilePath(NextFilePath);
 					break;
 				}
 			}

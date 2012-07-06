@@ -1,9 +1,13 @@
-static_assert(PROGRAM_H == 0, "Include each header at most once per translation unit.");
-#define PROGRAM_H 1
+#ifdef PROGRAM_H
+#error Include each header at most once per translation unit
+#endif
+#define PROGRAM_H
 
 #include <queue>
 
 #include "ren-general/string.h"
+#include "ren-general/lifetime.h"
+#include "ren-general/filesystem.h"
 
 class Program
 {
@@ -13,9 +17,9 @@ class Program
 		static void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out);
 		Program(void);
 		void Respond(std::queue<String> &&Arguments, std::ostream &Out);
-		DirectoryPath *FindProgram(String const &ProgramName);
+		FilePath *FindProgram(String const &ProgramName);
 	private:
 		std::vector<DirectoryPath> const Paths;
-		std::map<String, FilePath> Programs;
+		DeleterMap<String, FilePath> Programs;
 };
 

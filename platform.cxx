@@ -91,7 +91,7 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 #else
 	// Linux
 	Family = Families::Linux;
-	FileInput LSBRelease(FilePath("/etc/lsb-release"));
+	FileInput LSBRelease(AsNativeString(FilePath("/etc/lsb-release")));
 	String LSBReleaseLine;
 	while (std::getline(LSBRelease, LSBReleaseLine))
 	{
@@ -119,26 +119,36 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 }
 
 String Platform::GetIdentifier(void) { return "platform"; }
+
+static void PrintEnumerations(std::ostream &Out)
+{
+	Out << "\tAllowed FAMILY and MEMBER values follow in the format \"family: member1, member2...\".\n"
+		"\t" << Platform::Families::Windows << ": " << Platform::Members::Windows2000 << ", " << Platform::Members::WindowsXP << ", " << Platform::Members::WindowsServer2003 << ", " << Platform::Members::WindowsVista << ", " << Platform::Members::WindowsServer2008 << ", " << Platform::Members::Windows7 << ", " << Platform::Members::Windows8 << ", " << Platform::Members::WindowsServer2012 << "\n"
+		"\t" << Platform::Families::Linux << ": " << Platform::Members::LinuxDebian << ", " << Platform::Members::LinuxArch << "\n"
+		"\t" << Platform::Families::BSD << ": " << Platform::Members::OpenBSD << ", " << Platform::Members::FreeBSD << ", " << Platform::Members::NetBSD << "\n"
+		"\n";
+
+}
 		
 void Platform::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << "\n"
 		"\tResult: FAMILY MEMBER ARCH\n"
-		"Determines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  Arch is the maximum bit depth for memory addresses on the system, such as 32 or 64.\n"
-		"The families
+		"Determines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  ARCH is the maximum bit depth for memory addresses on the system, such as 32 or 64.\n";
+	PrintEnumerations(Out);
+	Out << "\tarch=32|64\n"
+		"Overrides the detected architecture.  This may also affect installation directories and the like.\n"
+		"\n";
 }
 
 void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
 	Out << "\tplatform-family=FAMILY\n"
 		"\tplatform-member=MEMBER\n"
-		"Overrides the detected platform family and member with FAMILY and MEMBER.  Allowed FAMILY and MEMBER values follow in the format \"family: member1, member2...\".  Note, if the family is not recognized, it is assumed to be linux.  If the member is not recognized, it will be listed as \"unknown\".\n"
-		"\t" << Families::Windows << ": " << Members::Windows2000 << ", " << Members::WindowsXP << ", " << Members::WindowsServer2003 << ", " << Members::WindowsVista << ", " << Members::WindowsServer2008 << ", " << Members::Windows7 << ", " << Members::Windows8 << ", " << Members::WindowsServer2012 << "\n"
-		"\t" << Families::Linux << ": " << Members::LinuxDebian << ", " << Members::LinuxArch << "\n"
-		"\t" << Families::BSD << ": " << Members::OpenBSD << ", " << Members::FreeBSD << ", " << Members::NetBSD << "\n"
-		"\n";
+		"\tOverrides the detected platform family and member with FAMILY and MEMBER.\n";
+	PrintEnumerations(Out);
 	Out << "\tarch=32|64\n"
-		"Overrides the detected architecture.  This may also affect installation directories and the like.\n"
+		"\tOverrides the detected architecture.  This may also affect installation directories and the like.\n"
 		"\n";
 }
 

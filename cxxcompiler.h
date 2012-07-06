@@ -1,5 +1,7 @@
-static_assert(CXXCOMPILER_H == 0, "Include each header at most once per translation unit.");
-#define CXXCOMPILER_H 1
+#ifdef CXXCOMPILER_H
+#error Include each header at most once per translation unit.
+#endif
+#define CXXCOMPILER_H
 
 #include <queue>
 

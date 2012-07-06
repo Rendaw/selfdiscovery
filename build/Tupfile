@@ -1,6 +1,6 @@
 include_rules
 
-SOURCES = ../main.cxx ../shared.cxx ../blank.cxx ../flag.cxx ../platform.cxx ../location.cxx
+SOURCES = ../main.cxx ../shared.cxx ../blank.cxx ../flag.cxx ../platform.cxx ../location.cxx ../program.cxx ../cxxcompiler.cxx
 
 : foreach $(SOURCES) |> !object |> %B.o {objects}
 : {objects} ../ren-general/build/ren-general.a |> !executable |> selfdiscovery

@@ -66,7 +66,7 @@ void Program::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		throw InteractionError("Failed to find required program " + ProgramName);
 	
 	if (Found != nullptr) Out << Found->AsAbsoluteString();
-	Out << "\n\n";
+	Out << "\n";
 }
 
 FilePath *Program::FindProgram(String const &ProgramName)

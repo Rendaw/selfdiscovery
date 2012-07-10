@@ -53,7 +53,6 @@ namespace Information
 			
 			void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) override
 			{
-				Out << "\tConfiguration for: " << ItemClass::GetIdentifier() << "\n";
 				ItemClass::DisplayUserHelp(std::move(Arguments), Out); 
 			}
 			void Respond(std::queue<String> &&Arguments, std::ostream &Out) override
@@ -89,7 +88,7 @@ class SubprocessOutStream
 		SubprocessOutStream(void);
 		~SubprocessOutStream(void);
 		void Associate(int FileDescriptor);
-		void Write(String const &Contents = String());
+		void Write(String const &Contents = String("\n"));
 	private:
 		int FileDescriptor;
 };

@@ -17,42 +17,48 @@ ControllerError::ControllerError(String const &Message) : Message(Message) {}
 std::queue<String> SplitString(String const &Input, Set<char> const &Delimiters, bool DropBlanks)
 {
 	std::queue<String> Out;
+	String Buffer;
+	Buffer.reserve(1000);
 
 	char const Slash = '\\';
 	char const Quote = '"';
 	bool HotSlash = false, HotQuote = false;
-	unsigned int WordStart = 0;
 	for (unsigned int CharacterIndex = 0; CharacterIndex < Input.length(); ++CharacterIndex)
 	{
 		char const &CurrentCharacter = Input[CharacterIndex];
-		if (CurrentCharacter == Slash)
+		if (!HotSlash)
 		{
-			HotSlash = !HotSlash;
-			continue;
+			if (CurrentCharacter == Slash)
+			{
+				HotSlash = true;
+				continue;
+			}
+		
+			if (CurrentCharacter == Quote)
+			{
+				HotQuote = !HotQuote;
+				continue;
+			}
 		}
 
 		if (HotSlash)
 		{
 			HotSlash = false;
-			continue;
-		}
-
-		if (CurrentCharacter == Quote)
-		{
-			HotQuote = !HotQuote;
-			continue;
 		}
 
 		if (!HotQuote && Delimiters.Contains(CurrentCharacter))
 		{
-			if (!DropBlanks || (CharacterIndex - WordStart > 1))
-				Out.push(Input.substr(WordStart, CharacterIndex - WordStart));
-			WordStart = CharacterIndex + 1;
+			if (!DropBlanks || !Buffer.empty())
+				Out.push(Buffer);
+			Buffer.clear();
+			continue;
 		}
+		
+		Buffer.push_back(CurrentCharacter);
 	}
 
-	if (!DropBlanks || (Input.length() - WordStart > 1))
-		Out.push(Input.substr(WordStart, Input.length() - WordStart));
+	if (!DropBlanks || !Buffer.empty())
+		Out.push(Buffer);
 
 	return std::move(Out);
 }
@@ -70,25 +76,16 @@ extern Set<String> ProgramArguments;
 
 std::pair<bool, String> FindProgramArgument(String const &Name)
 {
-	bool Found = false;
-	Set<String>::iterator ArgumentFound = ProgramArguments.find(Name);
-	String Value;
-	if (ArgumentFound != ProgramArguments.end())
-		Found = true;
-	else if ((ArgumentFound = ProgramArguments.lower_bound(Name)) != ProgramArguments.end())
+	for (Set<String>::iterator ArgumentFound = ProgramArguments.lower_bound(Name); ArgumentFound != ProgramArguments.end(); ArgumentFound++)
 	{
-		size_t EqualFound = ArgumentFound->find('=');
-		String Front = *ArgumentFound;
-		if (EqualFound != String::npos)
-			Front = ArgumentFound->substr(0, EqualFound);
-		if (Front == Name)
-		{
-			Found = true;
-			Value = ArgumentFound->substr(EqualFound + 1, String::npos);
-		}
+		if (ArgumentFound->length() < Name.length()) break;
+		if (ArgumentFound->substr(0, Name.length()) != Name) break;
+		if (ArgumentFound->length() == Name.length()) 
+			return std::pair<bool, String>(true, String());
+		if ((*ArgumentFound)[Name.length()] != '=') continue;
+		return std::pair<bool, String>(true, ArgumentFound->substr(Name.length() + 1, String::npos));
 	}
-
-	return std::pair<bool, String>(Found, Value);
+	return std::pair<bool, String>(false, String());
 }
 
 namespace Information
@@ -161,13 +158,8 @@ void SubprocessOutStream::Write(String const &Contents)
 			{}
 	};
 
-	if (!Contents.empty())
-	{
-		int Wrote = write(FileDescriptor, Contents.c_str(), Contents.length());
-		if (Wrote == -1) throw WriteError();
-	}
-	char const NewLine[] = "\n";
-	int Wrote = write(FileDescriptor, NewLine, sizeof(NewLine) - 1);
+	assert(!Contents.empty());
+	int Wrote = write(FileDescriptor, Contents.c_str(), Contents.length());
 	if (Wrote == -1) throw WriteError();
 }
 

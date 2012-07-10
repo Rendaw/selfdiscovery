@@ -77,11 +77,13 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 
 	auto TestCompiler = [&](FilePath const &Compiler) -> bool
 	{
+		if (Verbose) std::cout << "Testing compiler " << Compiler << ".\n";
 		String Candidate = Compilers::GXX;
 		if (Compiler.File() == Candidate) 
 		{
 			if (Flags.Contains(SupportFlags::Generation2011))
 			{
+				if (Verbose) std::cout << "Testing compiler for C++11 support." << std::endl;
 				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}) &&
 					!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++0x"}))
 					return false;
@@ -89,7 +91,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		}
 		else return false; // Maybe unknown compilers should just be accepted, or assume they take g++-style arguments?
 
-		Out << Candidate << " " << Compiler.AsAbsoluteString() << "\n\n";
+		Out << Candidate << " " << Compiler.AsAbsoluteString() << "\n";
 		return true;
 	};
 

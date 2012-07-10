@@ -17,7 +17,7 @@ static void DumpProjectInstallDirectory(Set<String> const &Flags, std::ostream &
 	HRESULT Result = SHGetKnownFolderPath((PlatformInformation->GetArchitectureBits() == 64) ? FOLDERID_ProgramFilesX64 : FOLDERID_ProgramFiles, 0, nullptr, &PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't executable installation directory!  Received error " + AsString(Result));
-	Out << PathResult << "\\" << Project << "\n\n";
+	Out << PathResult << "\\" << Project << "\n";
 	CoTaskMemFree(PathResult);
 }
 #endif
@@ -29,16 +29,17 @@ void InstallExecutableDirectory::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
-		"Returns LOCATION, which will be the most appropriate executable installation location for project PROJECT.\n"
+		"\tReturns LOCATION, which will be the most appropriate executable installation location for project PROJECT.\n"
 		"\n";
 }
 
 void InstallExecutableDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
 	Out << "\tprefix=LOCATION\n"
-		"Overrides the default executable installation directory to use LOCATION/bin.\n\n";
+		"\tOverrides the default executable installation directory to use LOCATION/bin.\n\n";
+
 	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"Overrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.\n\n";
+		"\tOverrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.\n\n";
 }
 
 void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -54,7 +55,7 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 	std::pair<bool, String> OverrideExecutable = FindProgramArgument(GetIdentifier());
 	if (OverrideExecutable.first)
 	{
-		Out << OverrideExecutable.second << "\n\n";
+		Out << OverrideExecutable.second << "\n";
 		return;
 	}
 
@@ -63,7 +64,7 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/bin\n\n";
+		Out << OverridePrefix.second << "/bin\n";
 		return;
 	}
 	DumpProjectInstallDirectory(Flags, Out, ProjectName);
@@ -71,7 +72,7 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	Out << Prefix << "/bin\n\n";
+	Out << Prefix << "/bin\n";
 #endif
 }
 
@@ -81,16 +82,17 @@ void InstallLibraryDirectory::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
-		"Returns LOCATION, which will be the most appropriate shared library installation location for project PROJECT.\n"
+		"\tReturns LOCATION, which will be the most appropriate shared library installation location for project PROJECT.\n"
 		"\n";
 }
 
 void InstallLibraryDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
 {
 	Out << "\t" << "prefix=LOCATION\n"
-		"Overrides the default library installation directory to use LOCATION/bin.\n\n";
+		"\tOverrides the default library installation directory to use LOCATION/bin.\n\n";
+
 	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"Overrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.\n\n";
+		"\tOverrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.\n\n";
 }
 
 void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -106,7 +108,7 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 	std::pair<bool, String> OverrideExecutable = FindProgramArgument(GetIdentifier());
 	if (OverrideExecutable.first)
 	{
-		Out << OverrideExecutable.second << "\n\n";
+		Out << OverrideExecutable.second << "\n";
 		return;
 	}
 
@@ -115,7 +117,7 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/bin\n\n";
+		Out << OverridePrefix.second << "/bin\n";
 		return;
 	}
 	DumpProjectInstallDirectory(Flags, Out, ProjectName);
@@ -134,7 +136,7 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 		if (PlatformInformation->GetArchitectureBits() == 64) Out << "/lib64";
 		else Out << "/lib";
 	}
-	Out << "\n\n";
+	Out << "\n";
 #endif
 }
 
@@ -144,7 +146,7 @@ void InstallDataDirectory::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
-		"Returns LOCATION, which will be the most appropriate application data installation location for project PROJECT.\n"
+		"\tReturns LOCATION, which will be the most appropriate application data installation location for project PROJECT.\n"
 		"\n";
 }
 
@@ -152,9 +154,10 @@ void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::
 {
 	String ProjectName = GetProjectName(Arguments);
 	Out << "\t" << "prefix=LOCATION\n"
-		"Overrides the default data installation directory to use LOCATION/share/" << ProjectName << ".\n\n";
+		"\tOverrides the default data installation directory to use LOCATION/share/" << ProjectName << ".\n\n";
+
 	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"Overrides the default data installation directory to use LOCATION.\n\n";
+		"\tOverrides the default data installation directory to use LOCATION.\n\n";
 }
 
 void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -163,7 +166,7 @@ void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream 
 	std::pair<bool, String> OverrideData = FindProgramArgument(GetIdentifier());
 	if (OverrideData.first)
 	{
-		Out << OverrideData.second << "\n\n";
+		Out << OverrideData.second << "\n";
 		return;
 	}
 
@@ -172,14 +175,14 @@ void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream 
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/share/" << ProjectName << "\n\n";
+		Out << OverridePrefix.second << "/share/" << ProjectName << "\n";
 		return;
 	}
 	DumpProjectInstallDirectory(Out, ProjectName);
 #else
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	Out << Prefix << "/share/" << ProjectName << "\n\n";
+	Out << Prefix << "/share/" << ProjectName << "\n";
 #endif
 }
 
@@ -189,7 +192,7 @@ void InstallGlobalConfigDirectory::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
-		"Returns LOCATION, which will be the most appropriate system-wide configuration file installation location for project PROJECT.\n"
+		"\tReturns LOCATION, which will be the most appropriate system-wide configuration file installation location for project PROJECT.\n"
 		"\n";
 }
 
@@ -197,9 +200,10 @@ void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Argument
 {
 	String ProjectName = GetProjectName(Arguments);
 	Out << "\t" << "prefix=LOCATION\n"
-		"Overrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".\n\n";
+		"\tOverrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".\n\n";
+
 	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"Overrides the default data installation directory to use LOCATION.\n\n";
+		"\tOverrides the default data installation directory to use LOCATION.\n\n";
 }
 
 void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -208,14 +212,14 @@ void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::
 	std::pair<bool, String> OverrideConfig = FindProgramArgument(GetIdentifier());
 	if (OverrideConfig.first)
 	{
-		Out << OverrideConfig.second << "\n\n";
+		Out << OverrideConfig.second << "\n";
 		return;
 	}
 
 	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/etc/" << ProjectName << "\n\n";
+		Out << OverridePrefix.second << "/etc/" << ProjectName << "\n";
 		return;
 	}
 #ifdef WINDOWS
@@ -223,10 +227,10 @@ void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::
 	HRESULT Result = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't find global config directory!  Received error " + AsString(Result));
-	Out << PathResult << "\n\n";
+	Out << PathResult << "\n";
 	CoTaskMemFree(PathResult);
 #else
-	Out << "/usr/etc" << "\n\n";
+	Out << "/usr/etc" << "\n";
 #endif
 }
 

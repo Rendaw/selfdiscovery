@@ -11,7 +11,7 @@ String CLibrary::GetIdentifier(void) { return "c-library"; }
 void CLibrary::DisplayControllerHelp(std::ostream &Out)
 {
 	Out << "\t" << GetIdentifier() << " NAME FLAGS\n"
-		"\tResult: FILENAME INCLUDEDIR LIBRARYDIR\n"
+		"\tResult: FILENAME LIBRARYDIR INCLUDEDIR\n"
 		"\tLocates and returns information about C library NAME.  FLAGS can be any number of the following flags, separated by spaces: optional, static.  If \"optional\" is not specified, the configuration will abort if the library is not found.  If \"optional\" is specified and the library is not found, no response will be returned.  If \"static\" is specified, a static library will be located instead of a dynamic library.  FILENAME is the name of the library file.  INCLUDEDIR will contain the location of headers associated with the library.  LIBRARYDIR will contain the location of the library itself.\n"
 		"\n";
 }
@@ -127,7 +127,21 @@ void CLibrary::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	auto WriteIncludeLocation = [&](FilePath const &LibraryPath)
 	{
 		if (OverrideIncludes.first) Out << " " << OverrideIncludes.second;
-		else Out << " " << LibraryPath.Directory().Exit().Enter("include");
+		else 
+		{
+			DirectoryPath ResultPath = LibraryPath.Directory();
+			DirectoryPath IncludeSearchPath = ResultPath;
+			while (!IncludeSearchPath.IsRoot())
+			{
+				IncludeSearchPath = IncludeSearchPath.Exit();
+				if (IncludeSearchPath.Select("include").Exists())
+				{
+					ResultPath = IncludeSearchPath.Enter("include");
+					break;
+				}
+			}
+			Out << " " << ResultPath;
+		}
 	};
 
 	if (OverrideLibrary.first)

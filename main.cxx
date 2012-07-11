@@ -1,3 +1,7 @@
+// TODO selfdiscovery-version information item, fails if versions aren't compatible
+// TODO fortune zodiak item
+// TODO personality item
+
 #include <iostream>
 #include <cstring>
 #include <queue>

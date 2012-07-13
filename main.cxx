@@ -1,4 +1,3 @@
-// TODO selfdiscovery-version information item, fails if versions aren't compatible
 // TODO fortune zodiak item
 // TODO personality item
 
@@ -18,6 +17,7 @@ enum RunModes { Normal, Help, ControllerHelp } RunMode = Normal;
 bool Verbose = false;
 
 #include "blank.h"
+#include "version.h"
 #include "flag.h"
 #include "platform.h"
 #include "location.h"
@@ -46,6 +46,8 @@ int main(int argc, char **argv)
 		std::map<String, Information::Anchor *> InformationItems;
 		Information::AnchorImplementation<Blank> BlankInformation;
 		InformationItems[Blank::GetIdentifier()] = &BlankInformation;
+		Information::AnchorImplementation<Version> VersionInformation;
+		InformationItems[Version::GetIdentifier()] = &VersionInformation;
 		Information::AnchorImplementation<Flag> FlagInformation;
 		InformationItems[Flag::GetIdentifier()] = &FlagInformation;
 		InformationItems[Platform::GetIdentifier()] = &PlatformInformation;

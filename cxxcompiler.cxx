@@ -78,8 +78,10 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	auto TestCompiler = [&](FilePath const &Compiler) -> bool
 	{
 		if (Verbose) std::cout << "Testing compiler " << Compiler << ".\n";
+		String const CompilerFile = Compiler.File();
 		String Candidate = Compilers::GXX;
-		if (Compiler.File() == Candidate) 
+		if ((CompilerFile == (Candidate = Compilers::GXX)) ||
+			(CompilerFile.find("g++") != String::npos))
 		{
 			if (Flags.Contains(SupportFlags::Generation2011))
 			{

@@ -1,5 +1,9 @@
 #include "location.h"
 
+#ifdef WINDOWS
+#include <shlobj.h>
+#endif
+
 #include "ren-general/arrangement.h"
 
 #include "shared.h"
@@ -11,14 +15,13 @@ static String GetProjectName(std::queue<String> &Arguments)
 	{ return GetNextArgument(Arguments, "project name"); }
 
 #ifdef _WIN32
-static void DumpProjectInstallDirectory(Set<String> const &Flags, std::ostream &Out, String const &Project)
+static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project)
 {
-	PWSTR PathResult;
-	HRESULT Result = SHGetKnownFolderPath((PlatformInformation->GetArchitectureBits() == 64) ? FOLDERID_ProgramFilesX64 : FOLDERID_ProgramFiles, 0, nullptr, &PathResult);
+	wchar_t PathResult[MAX_PATH];
+	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, 0, PathResult);
 	if (Result != S_OK)
-		throw InteractionError("Couldn't executable installation directory!  Received error " + AsString(Result));
-	Out << PathResult << "\\" << Project << "\n";
-	CoTaskMemFree(PathResult);
+		throw InteractionError("Couldn't locate executable installation directory!  Received error " + AsString(Result));
+	Out << AsString(PathResult) << "\\" << Project << "\n";
 }
 #endif
 
@@ -67,7 +70,7 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 		Out << OverridePrefix.second << "/bin\n";
 		return;
 	}
-	DumpProjectInstallDirectory(Flags, Out, ProjectName);
+	DumpProjectInstallDirectory(Out, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
@@ -120,7 +123,7 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 		Out << OverridePrefix.second << "/bin\n";
 		return;
 	}
-	DumpProjectInstallDirectory(Flags, Out, ProjectName);
+	DumpProjectInstallDirectory(Out, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
@@ -223,12 +226,11 @@ void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::
 		return;
 	}
 #ifdef WINDOWS
-	PWSTR PathResult;
-	HRESULT Result = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &PathResult);
+	wchar_t PathResult[MAX_PATH];
+	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't find global config directory!  Received error " + AsString(Result));
-	Out << PathResult << "\n";
-	CoTaskMemFree(PathResult);
+	Out << AsString(PathResult) << "\n";
 #else
 	Out << "/usr/etc" << "\n";
 #endif

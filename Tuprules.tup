@@ -1,10 +1,13 @@
 OUTPUT=selfdiscovery
 
-COMPILEFLAGS = -std=c++0x -Wall -pedantic
+COMPILEFLAGS = -std=c++0x -Wall -pedantic @(CFLAGS)
 ifeq (@(DEBUG),true)
 	COMPILEFLAGS += -ggdb -O0
 else
 	COMPILEFLAGS += -O3 -DNDEBUG
+endif
+ifeq (@(PLATFORM),windows)
+	COMPILEFLAGS += -DWINDOWS
 endif
 
 !object = |> g++ $(COMPILEFLAGS) -c %f -o %o |> %o

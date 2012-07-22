@@ -50,18 +50,18 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 		OSVERSIONINFOEX VersionInfo;
 		memset(&VersionInfo, 0, sizeof(VersionInfo));
 		VersionInfo.dwOSVersionInfoSize = sizeof(VersionInfo);
-		GetVersionEx(&VersionInfo);
+		GetVersionEx(reinterpret_cast<OSVERSIONINFO *>(&VersionInfo));
 		if (VersionInfo.dwMajorVersion == 5)
 		{
 			if (VersionInfo.dwMinorVersion == 0)
 				Member = Members::Windows2000;
-			else if ((VersionInfo.dwMinorVersion == 1) || ((VersionInfo.dwMinorVersion == 2) && (VersionInfo.dwProductType == VER_NT_WORKSTATION)))
+			else if ((VersionInfo.dwMinorVersion == 1) || ((VersionInfo.dwMinorVersion == 2) && (VersionInfo.wProductType == VER_NT_WORKSTATION)))
 				Member = Members::WindowsXP;
 			else Member = Members::WindowsServer2003;
 		}
 		else if (VersionInfo.dwMajorVersion == 6)
 		{
-			if (VersionInfo.dwProductType == VER_NT_WORKSTATION)
+			if (VersionInfo.wProductType == VER_NT_WORKSTATION)
 			{
 				if (VersionInfo.dwMinorVersion == 0)
 					Member = Members::WindowsVista;

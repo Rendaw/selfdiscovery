@@ -103,6 +103,7 @@ class Subprocess
 		int GetResult(void);
 	private:
 #ifdef _WIN32
+		PROCESS_INFORMATION ChildStatus;
 #else
 		pid_t ChildID;
 #endif

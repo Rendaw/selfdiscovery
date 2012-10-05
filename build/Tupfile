@@ -1,7 +1,24 @@
-include_rules
+tup.dorulesfile()
 
-SOURCES = ../main.cxx ../shared.cxx ../blank.cxx ../version.cxx ../flag.cxx ../platform.cxx ../location.cxx ../program.cxx ../cxxcompiler.cxx ../clibrary.cxx
+Sources = 
+{
+	'../main.cxx',
+	'../shared.cxx',
+	'../blank.cxx',
+	'../version.cxx',
+	'../flag.cxx',
+	'../platform.cxx',
+	'../location.cxx',
+	'../program.cxx',
+	'../cxxcompiler.cxx',
+	'../clibrary.cxx'
+}
 
-: foreach $(SOURCES) |> !object |> %B.o {objects}
-: {objects} ../ren-general/build/ren-general.a |> !executable |>
+Objects = {}
+for Index, Source in ipairs(Sources)
+do
+	table.insert(Objects, Rule.Object(Source))
+end
+table.insert(Objects, '../ren-general/build/ren-general.a')
+Rule.Executable(Objects, 'selfdiscovery')
 

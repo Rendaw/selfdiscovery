@@ -8,7 +8,7 @@ extern Information::AnchorImplementation<Platform> PlatformInformation;
 
 String CLibrary::GetIdentifier(void) { return "c-library"; }
 
-void CLibrary::DisplayControllerHelp(std::ostream &Out)
+void CLibrary::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " NAME FLAGS\n"
 		"\tResult: FILENAME LIBRARYDIR INCLUDEDIR\n"
@@ -16,7 +16,7 @@ void CLibrary::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void CLibrary::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void CLibrary::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String LibraryName = GetNextArgument(Arguments, "library name");
 	Out << "\t" << GetIdentifier() << "-" << LibraryName << "=LOCATION\n"
@@ -104,13 +104,13 @@ CLibrary::CLibrary(void) : TestLocations(GatherTestLocations())
 {
 	if (Verbose)
 	{
-		std::cout << "Checking the following directories for libraries:\n";
+		StandardStream << "Checking the following directories for libraries:\n";
 		for (auto &Location : TestLocations)
-			std::cout << "\t" << Location << "\n";
+			StandardStream << "\t" << Location << "\n";
 	}
 }
 
-void CLibrary::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void CLibrary::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String LibraryName = GetNextArgument(Arguments, "library name");
 	Set<String> Flags;
@@ -122,7 +122,7 @@ void CLibrary::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	std::pair<bool, String> OverrideLibrary = FindProgramArgument(GetIdentifier() + "-" + LibraryName),
 		OverrideIncludes = FindProgramArgument(GetIdentifier() + "-" + LibraryName + "-includes");
 
-	if (Verbose && !OverrideLibrary.first) std::cout << "Override location for library " << LibraryName << " not specified with flag: " << GetIdentifier() + "-" + LibraryName << ", proceeding with normal discovery." << std::endl;
+	if (Verbose && !OverrideLibrary.first) StandardStream << "Override location for library " << LibraryName << " not specified with flag: " << GetIdentifier() + "-" + LibraryName << ", proceeding with normal discovery." << "\n" << OutputStream::Flush();
 
 	auto WriteIncludeLocation = [&](FilePath const &LibraryPath)
 	{
@@ -148,7 +148,7 @@ void CLibrary::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	{
 		// Try override values
 		FilePath OverrideLibraryPath = OverrideLibrary.second;
-		if (Verbose) std::cout << "Testing for library " << LibraryName << " at " << OverrideLibraryPath << std::endl;
+		if (Verbose) StandardStream << "Testing for library " << LibraryName << " at " << OverrideLibraryPath << "\n" << OutputStream::Flush();
 		if (!OverrideLibraryPath.Exists())
 			throw InteractionError("The location of library " + LibraryName + " was manually specified but the file does not exist at that location.");
 		Out << OverrideLibraryPath.File() << " " << OverrideLibraryPath.Directory();
@@ -160,7 +160,7 @@ void CLibrary::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	{
 		auto ProcessLibraryLocation = [&](FilePath const &Location) -> bool
 		{
-			if (Verbose) std::cout << "Testing for library " << LibraryName << " at " << Location << std::endl;
+			if (Verbose) StandardStream << "Testing for library " << LibraryName << " at " << Location << "\n" << OutputStream::Flush();
 			if (!Location.Exists()) return false;
 			Out << Location.File() << " " << Location.Directory();
 			WriteIncludeLocation(Location);

@@ -37,9 +37,9 @@ namespace Information
 	{
 		public:
 			virtual ~Anchor(void);
-			virtual void DisplayControllerHelp(std::ostream &Out) = 0;
-			virtual void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) = 0;
-			virtual void Respond(std::queue<String> &&Arguments, std::ostream &Out) = 0;
+			virtual void DisplayControllerHelp(OutputStream &Out) = 0;
+			virtual void DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out) = 0;
+			virtual void Respond(std::queue<String> &&Arguments, OutputStream &Out) = 0;
 	};
 
 	template <typename ItemClass> class AnchorImplementation : public Anchor
@@ -48,14 +48,14 @@ namespace Information
 			AnchorImplementation(void) : AnchoredItem(nullptr) {}
 			~AnchorImplementation(void) { delete AnchoredItem; }
 			
-			void DisplayControllerHelp(std::ostream &Out) override
+			void DisplayControllerHelp(OutputStream &Out) override
 				{ ItemClass::DisplayControllerHelp(Out); }
 			
-			void DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) override
+			void DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out) override
 			{
 				ItemClass::DisplayUserHelp(std::move(Arguments), Out); 
 			}
-			void Respond(std::queue<String> &&Arguments, std::ostream &Out) override
+			void Respond(std::queue<String> &&Arguments, OutputStream &Out) override
 				{ (*this)->Respond(std::move(Arguments), Out); }
 			ItemClass *operator->(void)
 			{

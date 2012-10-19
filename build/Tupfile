@@ -1,4 +1,5 @@
 tup.dorulesfile()
+tup.dofile '../ren-general/build/files.tup'
 
 Sources = 
 {
@@ -19,6 +20,14 @@ for Index, Source in ipairs(Sources)
 do
 	table.insert(Objects, Rule.Object(Source))
 end
-table.insert(Objects, '../ren-general/build/ren-general.a')
-Rule.Executable(Objects, 'selfdiscovery')
+for Index, Object in ipairs(RenGeneralObjects)
+do
+	table.insert(Objects, Object)
+end
+if tup.getconfig('PLATFORM') == 'windows'
+then
+	Rule.Executable(Objects, 'selfdiscovery.exe')
+else
+	Rule.Executable(Objects, 'selfdiscovery')
+end
 

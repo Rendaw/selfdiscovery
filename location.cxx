@@ -15,7 +15,7 @@ static String GetProjectName(std::queue<String> &Arguments)
 	{ return GetNextArgument(Arguments, "project name"); }
 
 #ifdef _WIN32
-static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project)
+static void DumpProjectInstallDirectory(OutputStream &Out, String const &Project)
 {
 	wchar_t PathResult[MAX_PATH];
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, 0, PathResult);
@@ -28,7 +28,7 @@ static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project
 
 String InstallExecutableDirectory::GetIdentifier(void) { return "install-executable-directory"; }
 		
-void InstallExecutableDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallExecutableDirectory::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
@@ -36,7 +36,7 @@ void InstallExecutableDirectory::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void InstallExecutableDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallExecutableDirectory::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	Out << "\tprefix=LOCATION\n"
 		"\tOverrides the default executable installation directory to use LOCATION/bin.\n\n";
@@ -45,7 +45,7 @@ void InstallExecutableDirectory::DisplayUserHelp(std::queue<String> &&Arguments,
 		"\tOverrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.\n\n";
 }
 
-void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	Set<String> Flags;
@@ -81,7 +81,7 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 
 String InstallLibraryDirectory::GetIdentifier(void) { return "install-library-directory"; }
 		
-void InstallLibraryDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallLibraryDirectory::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
@@ -89,7 +89,7 @@ void InstallLibraryDirectory::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void InstallLibraryDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallLibraryDirectory::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	Out << "\t" << "prefix=LOCATION\n"
 		"\tOverrides the default library installation directory to use LOCATION/bin.\n\n";
@@ -98,7 +98,7 @@ void InstallLibraryDirectory::DisplayUserHelp(std::queue<String> &&Arguments, st
 		"\tOverrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.\n\n";
 }
 
-void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	Set<String> Flags;
@@ -145,7 +145,7 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 
 String InstallDataDirectory::GetIdentifier(void) { return "install-data-directory"; }
 		
-void InstallDataDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallDataDirectory::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
@@ -153,7 +153,7 @@ void InstallDataDirectory::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	Out << "\t" << "prefix=LOCATION\n"
@@ -163,7 +163,7 @@ void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::
 		"\tOverrides the default data installation directory to use LOCATION.\n\n";
 }
 
-void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallDataDirectory::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	std::pair<bool, String> OverrideData = FindProgramArgument(GetIdentifier());
@@ -191,7 +191,7 @@ void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream 
 
 String InstallGlobalConfigDirectory::GetIdentifier(void) { return "install-config-directory"; }
 		
-void InstallGlobalConfigDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallGlobalConfigDirectory::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " PROJECT\n"
 		"\tResult: LOCATION\n"
@@ -199,7 +199,7 @@ void InstallGlobalConfigDirectory::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	Out << "\t" << "prefix=LOCATION\n"
@@ -209,7 +209,7 @@ void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Argument
 		"\tOverrides the default data installation directory to use LOCATION.\n\n";
 }
 
-void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	String ProjectName = GetProjectName(Arguments);
 	std::pair<bool, String> OverrideConfig = FindProgramArgument(GetIdentifier());

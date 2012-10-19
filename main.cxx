@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 				"\n"
 				"\tThe following requests are supported:\n\n";
 			for (auto &InformationPair : InformationItems)
-				InformationPair.second->DisplayControllerHelp(std::cout);
+				InformationPair.second->DisplayControllerHelp(StandardStream);
 			return 0;
 		}
 
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 				++RequestIndex; // Requests start from 1
 
 				std::queue<String> Line = SplitString(FullLine, {' ', '\t', '\n', '\r'}, true);
-				if (Verbose) std::cout << "Processing request: " << FullLine << std::endl;
+				if (Verbose) StandardStream << "Processing request: " << FullLine << "\n" << OutputStream::Flush();
 				FullLine = "";
 
 				String Identifier;
@@ -142,13 +142,13 @@ int main(int argc, char **argv)
 					assert(RunMode != RunModes::ControllerHelp);
 					if (RunMode == RunModes::Help)
 					{
-						Information->second->DisplayUserHelp(std::move(Line), std::cout);
+						Information->second->DisplayUserHelp(std::move(Line), StandardStream);
 					}
 					else
 					{
-						StringStream Out;
+						MemoryStream Out;
 						Information->second->Respond(std::move(Line), Out);
-						ResponseStream.Write(Out.str());
+						ResponseStream.Write(Out);
 					}
 					ResponseStream.Write();
 				}
@@ -161,12 +161,12 @@ int main(int argc, char **argv)
 	}
 	catch (InteractionError &Error)
 	{
-		std::cerr << "Self discovery failed with error: " << Error.Message << std::endl;
+		StandardErrorStream << "Self discovery failed with error: " << Error.Message << "\n" << OutputStream::Flush();
 		return 1;
 	}
 	catch (ControllerError &Error)
 	{
-		std::cerr << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Error.Message << std::endl;
+		StandardErrorStream << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Error.Message << "\n" << OutputStream::Flush();
 		return 1;
 	}
 

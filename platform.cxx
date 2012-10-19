@@ -36,7 +36,7 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 	std::pair<bool, String> OverrideArchitecture = FindProgramArgument("arch");
 	if (OverrideArchitecture.first)
 	{
-		StringStream Value(OverrideArchitecture.second);
+		MemoryStream Value(OverrideArchitecture.second);
 		Value >> ArchitectureBits;
 	}
 
@@ -115,12 +115,12 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 	}
 	assert(!Family.empty());
 	if (Verbose)
-		std::cout << "Determined platform: " << Family << ", " << Member << ", " << ArchitectureBits << "-bit" << std::endl;
+		StandardStream << "Determined platform: " << Family << ", " << Member << ", " << ArchitectureBits << "-bit" << "\n" << OutputStream::Flush();
 }
 
 String Platform::GetIdentifier(void) { return "platform"; }
 
-static void PrintEnumerations(std::ostream &Out)
+static void PrintEnumerations(OutputStream &Out)
 {
 	Out << "\tAllowed FAMILY and MEMBER values follow in the format \"family: member1, member2...\".\n"
 		"\t" << Platform::Families::Windows << ": " << Platform::Members::Windows2000 << ", " << Platform::Members::WindowsXP << ", " << Platform::Members::WindowsServer2003 << ", " << Platform::Members::WindowsVista << ", " << Platform::Members::WindowsServer2008 << ", " << Platform::Members::Windows7 << ", " << Platform::Members::Windows8 << ", " << Platform::Members::WindowsServer2012 << "\n"
@@ -129,7 +129,7 @@ static void PrintEnumerations(std::ostream &Out)
 
 }
 		
-void Platform::DisplayControllerHelp(std::ostream &Out)
+void Platform::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << "\n"
 		"\tResult: FAMILY MEMBER ARCH\n"
@@ -140,7 +140,7 @@ void Platform::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void Platform::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	Out << "\tplatform-family=FAMILY\n"
 		"\tplatform-member=MEMBER\n"
@@ -152,7 +152,7 @@ void Platform::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out
 		"\n";
 }
 
-void Platform::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void Platform::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	Out << Family << " " << Member << " " << ArchitectureBits << "\n";
 }

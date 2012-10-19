@@ -23,22 +23,21 @@ namespace Compilers
 
 static bool CompileExample(FilePath const &CompilerPath, String const &Example, std::vector<String> Arguments)
 {
-	FileOutput TestFile;
-	FilePath TestFileLocation = CreateTemporaryFile(LocateTemporaryDirectory(), TestFile);
-	TestFile << Example << std::endl;
-	Arguments.push_back(TestFileLocation.AsAbsoluteString());
+	auto TemporaryFile = CreateTemporaryFile(LocateTemporaryDirectory());
+	std::get<1>(TemporaryFile) << Example << "\n" << OutputStream::Flush();
+	Arguments.push_back(std::get<0>(TemporaryFile).AsAbsoluteString());
 	Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
 	if (Verbose)
 		while (!Compiler.In.HasFailed())
-			std::cout << "Compiler output: " << Compiler.In.ReadLine() << std::endl;
+			StandardStream << "Compiler output: " << Compiler.In.ReadLine() << "\n" << OutputStream::Flush();
 	else Compiler.In.ReadToEnd();
-	TestFileLocation.Delete();
+	std::get<0>(TemporaryFile).Delete();
 	return Compiler.GetResult() == 0;
 }
 
 String CXXCompiler::GetIdentifier(void) { return "c++-compiler"; }
 
-void CXXCompiler::DisplayControllerHelp(std::ostream &Out)
+void CXXCompiler::DisplayControllerHelp(OutputStream &Out)
 {
 	Out << "\t" << GetIdentifier() << " (" << SupportFlags::Generation2011 << ")\n"
 		"\tResult: COMPILER PATH\n"
@@ -48,7 +47,7 @@ void CXXCompiler::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void CXXCompiler::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) 
+void CXXCompiler::DisplayUserHelp(std::queue<String> &&Arguments, OutputStream &Out) 
 {
 	Set<String> Flags;
 	while (!Arguments.empty())
@@ -66,7 +65,7 @@ void CXXCompiler::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &
 
 String const CXX11Example = "#include <functional>\nint main(int argc, char **argv) { std::function<void(void)> a; return 0; }";
 
-void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void CXXCompiler::Respond(std::queue<String> &&Arguments, OutputStream &Out)
 {
 	Set<String> Flags;
 	while (!Arguments.empty())
@@ -77,7 +76,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 
 	auto TestCompiler = [&](FilePath const &Compiler) -> bool
 	{
-		if (Verbose) std::cout << "Testing compiler " << Compiler << ".\n";
+		if (Verbose) StandardStream << "Testing compiler " << Compiler << ".\n";
 		String const CompilerFile = Compiler.File();
 		String Candidate = Compilers::GXX;
 		if ((CompilerFile == (Candidate = Compilers::GXX)) ||
@@ -85,7 +84,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		{
 			if (Flags.Contains(SupportFlags::Generation2011))
 			{
-				if (Verbose) std::cout << "Testing compiler for C++11 support." << std::endl;
+				if (Verbose) StandardStream << "Testing compiler for C++11 support." << "\n" << OutputStream::Flush();
 				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}) &&
 					!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++0x"}))
 					return false;
@@ -93,7 +92,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		}
 		else return false; // Maybe unknown compilers should just be accepted, or assume they take g++-style arguments?
 
-		Out << Candidate << " " << Compiler.AsAbsoluteString() << "\n";
+		Out << Candidate << " " << Compiler << "\n";
 		return true;
 	};
 

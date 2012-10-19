@@ -1,4 +1,4 @@
-CompileFlags = '-std=c++11 -Wall -pedantic ' .. tup.getconfig('CFLAGS')
+CompileFlags = '-std=gnu++11 -Wall -pedantic ' .. tup.getconfig('CFLAGS')
 if tup.getconfig('DEBUG') == 'true'
 then
 	CompileFlags = CompileFlags .. ' -ggdb -O0'
@@ -10,27 +10,43 @@ then
 	CompileFlags = CompileFlags .. ' -DWINDOWS'
 end
 
+CommandPrefix = ''
+CommandSuffix = ''
+if tup.getconfig('TUP_PLATFORM') == 'win32'
+then
+	CommandPrefix = 'bash -c \''
+	CommandSuffix = '\''
+end
+
+StripPath = function(Filename)
+	return string.gsub(Filename, '../', '')
+end
+
+NormalizeSlashes = function(Filename)
+	return string.gsub(Filename, '\\', '/')
+end
+
 Rule = 
 {
 	Object = function(Input)
-		local Output = string.gsub(Input, '../', '') .. '.o'
+		local Output = StripPath(Input) .. '.o'
 		tup.definerule{
 			inputs = {Input},
 			outputs = {Output},
-			command = tup.getconfig('COMPILER') .. ' ' .. CompileFlags .. ' -c ' .. Input .. ' -o ' .. Output}
+			command = CommandPrefix .. tup.getconfig('COMPILER') .. ' ' .. CompileFlags .. ' -c ' .. Input .. ' -o ' .. Output .. CommandSuffix} 
 		return Output
 	end,
 	Executable = function(Inputs, Output)
 		tup.definerule{
 			inputs = Inputs,
 			outputs = {Output},
-			command = tup.getconfig('COMPILER') .. ' ' .. CompileFlags .. ' ' .. table.concat(Inputs, ' ') .. ' -o ' .. Output}
+			command = CommandPrefix .. tup.getconfig('COMPILER') .. ' ' .. CompileFlags .. ' ' .. table.concat(Inputs, ' ') .. ' -o ' .. Output .. CommandSuffix}
 	end,
 	LightArchive = function(Inputs, Output)
 		tup.definerule{
 			inputs = Inputs,
 			outputs = {Output},
-			command = 'ar rsT ' .. Output .. ' ' .. table.concat(Inputs, ' ')}
+			command = CommandPrefix .. 'rm -f ' .. Output .. ' && ar rsT ' .. Output .. ' ' .. table.concat(Inputs, ' ') .. CommandSuffix}
 	end
 }
 

@@ -8,20 +8,18 @@ extern bool Verbose;
 
 String Program::GetIdentifier(void) { return "program"; }
 
-void Program::DisplayControllerHelp(std::ostream &Out)
+void Program::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " NAME\n"
-		"\tResult: LOCATION\n"
-		"\tLocates program NAME and returns the LOCATION.\n"
+	Out << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
+		"\tResult: {Location = LOCATION}\n"
+		"\tLocates program NAME and returns the LOCATION.  If FLAGS contains Optional, failure to locate the program will not terminate discovery, but nil will be returned rather than a table.\n"
 		"\n";
 }
 
-void Program::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) 
+void Program::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems) 
 {
-	String ProgramName = GetNextArgument(Arguments, "program name");
-	Out << "\t" << GetIdentifier() << "-" << ProgramName << "=LOCATION\n"
-		"\tOverride the detected location of " << ProgramName << " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.\n"
-		"\n";
+	String ProgramName = GetArgument(State, "Name");
+	HelpItems.Add(GetIdentifier() + "-" + ProgramName + "=LOCATION", "Override the detected location of " + ProgramName + " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.");
 }
 
 static std::vector<DirectoryPath> GetPathParts(void)
@@ -51,9 +49,9 @@ Program::Program(void) : Paths(GetPathParts())
 	}
 }
 
-void Program::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void Program::Respond(Script &State)
 {
-	String ProgramName = GetNextArgument(Arguments, "program name");
+	String ProgramName = GetArgument(State, "Name");
 	Set<String> Flags;
 	while (!Arguments.empty())
 	{
@@ -62,11 +60,14 @@ void Program::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 	}
 
 	FilePath *Found = FindProgram(ProgramName);
-	if ((Found == nullptr) && !Flags.Contains("optional"))
+	if ((Found == nullptr) && !GetFlag("Optional"))
 		throw InteractionError("Failed to find required program " + ProgramName);
 	
-	if (Found != nullptr) Out << Found->AsAbsoluteString();
-	Out << "\n";
+	if (Found != nullptr) 
+	{
+		State.PushString(Found->AsAbsoluteString());
+		State.PutElement("Location");
+	}
 }
 
 FilePath *Program::FindProgram(String const &ProgramName)

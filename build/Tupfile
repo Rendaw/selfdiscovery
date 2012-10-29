@@ -1,7 +1,35 @@
-include_rules
+tup.dorulesfile()
+tup.dofile '../ren-general/build/files.tup'
 
-SOURCES = ../main.cxx ../shared.cxx ../blank.cxx ../version.cxx ../flag.cxx ../platform.cxx ../location.cxx ../program.cxx ../cxxcompiler.cxx ../clibrary.cxx
+Sources = 
+{
+	'../information/platform.cxx',
+	'../information/flag.cxx',
+	'../information/cxxcompiler.cxx',
+	'../information/version.cxx',
+	'../information/location.cxx',
+	'../information/blank.cxx',
+	'../information/program.cxx',
+	'../information/clibrary.cxx',
+	'../shared.cxx',
+	'../information.cxx',
+	'../configuration.cxx',
+	'../main.cxx'
+}
 
-: foreach $(SOURCES) |> !object |> %B.o {objects}
-: {objects} ../ren-general/build/ren-general.a |> !executable |>
+Objects = {}
+for Index, Source in ipairs(Sources)
+do
+	table.insert(Objects, Rule.Object(Source))
+end
+for Index, Object in ipairs(RenGeneralObjects)
+do
+	table.insert(Objects, Object)
+end
+if tup.getconfig('PLATFORM') == 'windows'
+then
+	Rule.Executable(Objects, 'selfdiscovery.exe')
+else
+	Rule.Executable(Objects, 'selfdiscovery')
+end
 

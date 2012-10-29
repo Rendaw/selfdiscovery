@@ -15,15 +15,16 @@
 InteractionError::InteractionError(String const &Message) : Message(Message) {}
 ControllerError::ControllerError(String const &Message) : Message(Message) {}
 
-std::queue<String> SplitString(String const &Input, Set<char> const &Delimiters, bool DropBlanks)
+StringSplitter::StringSplitter(Set<char> const &Delimiters, bool DropBlanks) : 
+	Delimiters(Delimiters), DropBlanks(DropBlanks) HotSlash(false), HotQuote(false) {}
+
+StringSplitter &StringSplitter::Process(String const &Input)
 {
-	std::queue<String> Out;
 	String Buffer;
 	Buffer.reserve(1000);
 
 	char const Slash = '\\';
 	char const Quote = '"';
-	bool HotSlash = false, HotQuote = false;
 	for (unsigned int CharacterIndex = 0; CharacterIndex < Input.length(); ++CharacterIndex)
 	{
 		char const &CurrentCharacter = Input[CharacterIndex];
@@ -61,8 +62,12 @@ std::queue<String> SplitString(String const &Input, Set<char> const &Delimiters,
 	if (!DropBlanks || !Buffer.empty())
 		Out.push(Buffer);
 
-	return std::move(Out);
+	return *this;
 }
+
+bool StringSplitter::Unfinished(void) { return HotSlash || HotQuote; }
+
+std::queue<String> &StringSplitter::Results(void) { return Out; }
 
 String GetNextArgument(std::queue<String> &Arguments, String const &Name)
 {
@@ -71,27 +76,6 @@ String GetNextArgument(std::queue<String> &Arguments, String const &Name)
 	String NextArgument = Arguments.front();
 	Arguments.pop();
 	return std::move(NextArgument);
-}
-
-extern Set<String> ProgramArguments;
-
-std::pair<bool, String> FindProgramArgument(String const &Name)
-{
-	for (Set<String>::iterator ArgumentFound = ProgramArguments.lower_bound(Name); ArgumentFound != ProgramArguments.end(); ArgumentFound++)
-	{
-		if (ArgumentFound->length() < Name.length()) break;
-		if (ArgumentFound->substr(0, Name.length()) != Name) break;
-		if (ArgumentFound->length() == Name.length()) 
-			return std::pair<bool, String>(true, String());
-		if ((*ArgumentFound)[Name.length()] != '=') continue;
-		return std::pair<bool, String>(true, ArgumentFound->substr(Name.length() + 1, String::npos));
-	}
-	return std::pair<bool, String>(false, String());
-}
-
-namespace Information
-{
-	Anchor::~Anchor(void) {}
 }
 
 SubprocessInStream::SubprocessInStream(void) : FileDescriptor(-1), Failed(true) {}

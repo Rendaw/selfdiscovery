@@ -26,23 +26,21 @@ static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project
 #endif
 
 
-String InstallExecutableDirectory::GetIdentifier(void) { return "install-executable-directory"; }
+String InstallExecutableDirectory::GetIdentifier(void) { return "InstallExecutableDirectory"; }
 		
-void InstallExecutableDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallExecutableDirectory::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " PROJECT\n"
-		"\tResult: LOCATION\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Project = PROJECT}\n"
+		"\tResult: {Location = LOCATION}\n"
 		"\tReturns LOCATION, which will be the most appropriate executable installation location for project PROJECT.\n"
 		"\n";
 }
 
-void InstallExecutableDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallExecutableDirectory::DisplayUserHelp(Script &State, HelpItemCollection &HelpItems)
 {
-	Out << "\tprefix=LOCATION\n"
-		"\tOverrides the default executable installation directory to use LOCATION/bin.\n\n";
+	HelpItemCollection.Add("prefix=LOCATION", "Overrides the default executable installation directory to use LOCATION/bin.");
 
-	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"\tOverrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.\n\n";
+	HelpItemCollection.Add(GetIdentifier() + "=LOCATION", "Overrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.");
 }
 
 void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -79,26 +77,23 @@ void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::os
 #endif
 }
 
-String InstallLibraryDirectory::GetIdentifier(void) { return "install-library-directory"; }
+String InstallLibraryDirectory::GetIdentifier(void) { return "InstallLibraryDirectory"; }
 		
-void InstallLibraryDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallLibraryDirectory::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " PROJECT\n"
-		"\tResult: LOCATION\n"
+	StandardStream << "\tSelfDiscovery." << GetIdentifier() << "{Project = PROJECT}\n"
+		"\tResult: {Location = LOCATION}\n"
 		"\tReturns LOCATION, which will be the most appropriate shared library installation location for project PROJECT.\n"
 		"\n";
 }
 
-void InstallLibraryDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallLibraryDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	Out << "\t" << "prefix=LOCATION\n"
-		"\tOverrides the default library installation directory to use LOCATION/bin.\n\n";
-
-	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"\tOverrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.\n\n";
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default library installation directory to use LOCATION/bin.");
+	HelpItem.Add(GetIdentifier() + "=LOCATION", "Overrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.");
 }
 
-void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallLibraryDirectory::Respond(Script &state)
 {
 	String ProjectName = GetProjectName(Arguments);
 	Set<String> Flags;
@@ -143,24 +138,21 @@ void InstallLibraryDirectory::Respond(std::queue<String> &&Arguments, std::ostre
 #endif
 }
 
-String InstallDataDirectory::GetIdentifier(void) { return "install-data-directory"; }
+String InstallDataDirectory::GetIdentifier(void) { return "InstallDataDirectory"; }
 		
-void InstallDataDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallDataDirectory::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " PROJECT\n"
-		"\tResult: LOCATION\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Project = PROJECT}\n"
+		"\tResult: {Location = LOCATION}\n"
 		"\tReturns LOCATION, which will be the most appropriate application data installation location for project PROJECT.\n"
 		"\n";
 }
 
-void InstallDataDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallDataDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	String ProjectName = GetProjectName(Arguments);
-	Out << "\t" << "prefix=LOCATION\n"
-		"\tOverrides the default data installation directory to use LOCATION/share/" << ProjectName << ".\n\n";
-
-	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"\tOverrides the default data installation directory to use LOCATION.\n\n";
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default data installation directory to use LOCATION/share/" << ProjectName << ".");
+	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default data installation directory to use LOCATION.");
 }
 
 void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
@@ -189,24 +181,21 @@ void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream 
 #endif
 }
 
-String InstallGlobalConfigDirectory::GetIdentifier(void) { return "install-config-directory"; }
+String InstallGlobalConfigDirectory::GetIdentifier(void) { return "InstallConfigDirectory"; }
 		
-void InstallGlobalConfigDirectory::DisplayControllerHelp(std::ostream &Out)
+void InstallGlobalConfigDirectory::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " PROJECT\n"
-		"\tResult: LOCATION\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Project = PROJECT}\n"
+		"\tResult: {Location = LOCATION}\n"
 		"\tReturns LOCATION, which will be the most appropriate system-wide configuration file installation location for project PROJECT.\n"
 		"\n";
 }
 
-void InstallGlobalConfigDirectory::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallGlobalConfigDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	String ProjectName = GetProjectName(Arguments);
-	Out << "\t" << "prefix=LOCATION\n"
-		"\tOverrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".\n\n";
-
-	Out << "\t" << GetIdentifier() << "=LOCATION\n"
-		"\tOverrides the default data installation directory to use LOCATION.\n\n";
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".");
+	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default data installation directory to use LOCATION.");
 }
 
 void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)

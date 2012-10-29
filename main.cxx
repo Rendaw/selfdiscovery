@@ -12,7 +12,6 @@
 #include "shared.h"
 
 // Global information and information types - used in main loop and in individual info types and such
-Set<String> ProgramArguments;
 enum RunModes { Normal, Help, ControllerHelp } RunMode = Normal;
 bool Verbose = false;
 
@@ -25,137 +24,111 @@ bool Verbose = false;
 #include "cxxcompiler.h"
 #include "clibrary.h"
 		
+Information::AnchorImplementation<Blank> BlankInformation;
+Information::AnchorImplementation<Version> VersionInformation;
+Information::AnchorImplementation<Flag> FlagInformation;
 Information::AnchorImplementation<Platform> PlatformInformation;
+Information::AnchorImplementation<InstallExecutableDirectory> ExecutableInstallInformation;
+Information::AnchorImplementation<InstallLibraryDirectory> LibraryInstallInformation;
+Information::AnchorImplementation<InstallDataDirectory> DataInstallInformation;
+Information::AnchorImplementation<InstallGlobalConfigDirectory> ConfigInstallInformation;
 Information::AnchorImplementation<Program> ProgramInformation;
+Information::AnchorImplementation<CXXCompiler> CXXCompilerInformation;
+Information::AnchorImplementation<CLibrary> CLibraryInformation;
 
 int main(int argc, char **argv)
 {
-	try {
-		// Process arguments, store in searchable map
+	try 
+	{
+		// Determine the controller
 		if (argc < 2) throw InteractionError("A controller program must be specified as the first argument.");
 		String ControllerName = argv[1];
 
+		// Get configuration/overrides, prioritize closer stuff (commandline, user files) over more distant stuff (global config files)
+		LoadConfiguragionFile(LocateGlobalConfigFile("selfdiscovery.config"));
+		LoadConfiguragionFile(LocateUserConfigFile("selfdiscovery.config"));
+		LoadConfiguragionFile(LocateWorkingDirectory().Select("selfdiscovery.config"));
+		
 		for (unsigned int CurrentArgumentIndex = 2; CurrentArgumentIndex < (unsigned int)argc; CurrentArgumentIndex++)
-			ProgramArguments.And(argv[CurrentArgumentIndex]);
+			LoadConfigurationCommandline(argv[CurrentArgumentIndex]);
+		
+		if (FindConfiguration("help").first || FindConfiguration("--help").first || FindConfiguration("-h").first) RunMode = RunModes::Help;
+		if (FindConfiguration("controllerhelp").first) RunMode = RunModes::ControllerHelp;
+		if (FindConfiguration("verbose").first) Verbose = true;
 
-		if (FindProgramArgument("help").first || FindProgramArgument("--help").first || FindProgramArgument("-h").first) RunMode = RunModes::Help;
-		if (FindProgramArgument("controllerhelp").first) RunMode = RunModes::ControllerHelp;
-		if (FindProgramArgument("verbose").first) Verbose = true;
+		if (Verbose)
+		{
+			for (auto ConfigurationElement : ProgramConfiguration)
+				StandardStream << "Configuration setting: \'" << ConfigurationElement.first << "\' = \'" << ConfigurationElement.second.Value << "\', from " << ConfigurationElement.second.Source << "\n" << OutputStream::Flush();
 
-		// Prepare information management
-		std::map<String, Information::Anchor *> InformationItems;
-		Information::AnchorImplementation<Blank> BlankInformation;
-		InformationItems[Blank::GetIdentifier()] = &BlankInformation;
-		Information::AnchorImplementation<Version> VersionInformation;
-		InformationItems[Version::GetIdentifier()] = &VersionInformation;
-		Information::AnchorImplementation<Flag> FlagInformation;
-		InformationItems[Flag::GetIdentifier()] = &FlagInformation;
-		InformationItems[Platform::GetIdentifier()] = &PlatformInformation;
-		Information::AnchorImplementation<InstallExecutableDirectory> ExecutableInstallInformation;
-		InformationItems[InstallExecutableDirectory::GetIdentifier()] = &ExecutableInstallInformation;
-		Information::AnchorImplementation<InstallLibraryDirectory> LibraryInstallInformation;
-		InformationItems[InstallLibraryDirectory::GetIdentifier()] = &LibraryInstallInformation;
-		Information::AnchorImplementation<InstallDataDirectory> DataInstallInformation;
-		InformationItems[InstallDataDirectory::GetIdentifier()] = &DataInstallInformation;
-		Information::AnchorImplementation<InstallGlobalConfigDirectory> ConfigInstallInformation;
-		InformationItems[InstallGlobalConfigDirectory::GetIdentifier()] = &ConfigInstallInformation;
-		Information::AnchorImplementation<Program> ProgramInformation;
-		InformationItems[Program::GetIdentifier()] = &ProgramInformation;
-		Information::AnchorImplementation<CXXCompiler> CXXCompilerInformation;
-		InformationItems[CXXCompiler::GetIdentifier()] = &CXXCompilerInformation;
-		Information::AnchorImplementation<CLibrary> CLibraryInformation;
-		InformationItems[CLibrary::GetIdentifier()] = &CLibraryInformation;
+		}
+
+		// Prepare a list of information items for next operations
+		DeleterList<Information::Anchor *> InformationItems = 
+		{
+			&BlankInformation,
+			&VersionInformation,
+			&FlagInformation,
+			&PlatformInformation,
+			&ExecutableInstallInformation,
+			&LibraryInstallInformation,
+			&DataInstallInformation,
+			&ConfigInstallInformation,
+			&ProgramInformation,
+			&CXXCompilerInformation,
+			&CLibraryInformation
+		};
 
 		// Display controller help and exit early if that flag was set
 		if (RunMode == RunModes::ControllerHelp)
 		{
-			std::cout << "\tA controller is a program that passes requests for information to this program and processes the returned information.  The controller is run as a subprocess of this program, and may be any generally recognized program type, such as an executable or shell script.  The controller is specified as the first argument of this program.\n"
-				"\tEach request may be one or more lines of space-separated values, followed by a blank line.  The responses are one or more lines of information followed by a blank line.  A properly behaved controller should only exit before making a request, after this program's response has completed.\n"
-				"\tAlternatively, you can specify \"-\" instead of a controller program to enter an interactive mode where you can type requests directly to the program.\n"
-				"\n"
-				"\tThe following requests are supported:\n\n";
-			for (auto &InformationPair : InformationItems)
-				InformationPair.second->DisplayControllerHelp(std::cout);
+			StandardStream << "\tA controller is a lua program that makes requests for information and processes the returned information.  The controller filename must be specified as the first argument to the program.  If you specify \"--\" instead of a filename, an interactive lua shell will be opened instead.\n"
+				"\tThe following information queries can be made by the controller:\n\n";
+			for (auto &InformationItem : InformationItems)
+				InformationItem->DisplayControllerHelp();
 			return 0;
 		}
 
 		if (RunMode == RunModes::Help)
 		{
-			std::cout << "\tThis program communicates system information and user preferences to a controller program.  One use for this behavior is package configuration, where the controller takes the system information and prepares the package for compilation.  Perhaps that is why you are seeking help.\n"
-				"\tThis program takes one argument, the controller.  Generally, this should be enough for the controller to complete its duties.  However, if the program fails to find necessary information or determines the wrong values, you may have to provide additional arguments.\n"
-				"\tThe following flags can be passed as arguments to this program to override gathered information or control how it is gathered.  The flags below are listed based on the pieces of information the program requires, so they should all be immediately relevant.  No -- or - is required when specifying flags on the command line.  Run this again with the \"controllerhelp\" flag for documentation on creating a controller.  Run this with the \"verbose\" flag for more information on the information gathered as it is gathered.\n"
+			StandardStream << "\tThis program gathers information about your system for a controller script.  Generally, this is used by software build scripts to configure themselves for your system.  This program takes one argument, the controller.  The controller controls which information should be gathered.\n"
+				"\tIf this program cannot find required information or finds the incorrect information, you can override it by specifying an override on the command line or by putting the flag in a configuration file in a standard location.\n"
+				"\tThe override file must be one of " << LocateGlobalConfigFile("selfdiscovery.config") << ", " << LocateUserConfigFile("selfdiscovery.config") << ", or " << LocateWorkingDirectory().Select("selfdiscovery.config") << ", ordered by increasing priority.  In the configuration files, only one override may be placed on a line.\n"
+				"\tThe overrides should be specified in the form of \"overridename\" or \"overridename=value\".  Quotes and backslashes can be used to escape syntactic characters and group spaced words.  The following overrides are supported:\n"
 				"\n";
 		}
 
-		// Spawn script subprocess
-		std::unique_ptr<Subprocess> Controller;
-		SubprocessInStream WrappedStandardIn;
-		SubprocessOutStream WrappedStandardOut;
+		// Prepare and run the controller
+		Script ControlScript;
+		ControlScript.CreateTable();
+
+		HelpItemCollection HelpItems;
+			
+		for (auto &InformationItem : InformationItems)
+		{
+			if (RunMode == RunModes::Help)
+				ControlScript.PushFunction(InformationItem->GetUserHelpCallback(HelpItems))
+			else ControlScript.PushFunction(InformationItem->GetCallback())
+			ControlScript.PutElement(InformationItem->GetName());
+		}
+
+		ControlScript.SaveGlobal("SelfDiscovery");
+
 		if (ControllerName != "--")
-			Controller = std::unique_ptr<Subprocess>(new Subprocess(FilePath::Qualify(ControllerName), {}));
+			ControlScript.Do(ControllerName, Verbose);
 		else
 		{
-			// Allow the user to directly interact with self discovery if they specify "--" as the controller
-			WrappedStandardIn.Associate(0);
-			WrappedStandardOut.Associate(1);
+			assert(0); // TODO
 		}
-		SubprocessInStream &RequestStream = Controller ? Controller->In : WrappedStandardIn;
-		SubprocessOutStream &ResponseStream = Controller ? Controller->Out : WrappedStandardOut;
 
-		// Send initial paramers/header message
-		if ((RunMode == RunModes::Help) || (RunMode == RunModes::ControllerHelp)) 
-			ResponseStream.Write("help\n");
-		ResponseStream.Write();
-
-		// Read and process requests
-		String FullLine;
-		String RawLine;
-		unsigned int RequestIndex = 0;
-		while (true)
+		if (RunMode == RunModes::Help)
 		{
-			RawLine = RequestStream.ReadLine();
-			if (RequestStream.HasFailed())
-				break;
-
-			if (!RawLine.empty())
-				FullLine += RawLine;
-			else
+			for (auto &HelpItem : HelpItems) 
 			{
-				++RequestIndex; // Requests start from 1
-
-				std::queue<String> Line = SplitString(FullLine, {' ', '\t', '\n', '\r'}, true);
-				if (Verbose) std::cout << "Processing request: " << FullLine << std::endl;
-				FullLine = "";
-
-				String Identifier;
-				if (!Line.empty())
-				{
-					Identifier = Line.front();
-					Line.pop();
-				}
-
-				std::map<String, Information::Anchor *>::iterator Information = InformationItems.find(Identifier);
-				if (Information == InformationItems.end())
-					throw InteractionError("Error: Unknown request type \"" + Identifier + "\" for request #" + AsString(RequestIndex) + ".");
-
-				try {
-					assert(RunMode != RunModes::ControllerHelp);
-					if (RunMode == RunModes::Help)
-					{
-						Information->second->DisplayUserHelp(std::move(Line), std::cout);
-					}
-					else
-					{
-						StringStream Out;
-						Information->second->Respond(std::move(Line), Out);
-						ResponseStream.Write(Out.str());
-					}
-					ResponseStream.Write();
-				}
-				catch (ControllerError &Error)
-				{
-					throw ControllerError("In request \"" + RawLine + "\": " + Error.Message);
-				}
+				StandardStream << "\t" << HelpItem.first << "\n";
+				for (auto &Description : HelpItem.second)
+			       		StandardStream << Description << "\n";
+				StandardStream << "\n";
 			}
 		}
 	}

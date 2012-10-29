@@ -25,30 +25,30 @@ static bool CompileExample(FilePath const &CompilerPath, String const &Example, 
 {
 	FileOutput TestFile;
 	FilePath TestFileLocation = CreateTemporaryFile(LocateTemporaryDirectory(), TestFile);
-	TestFile << Example << std::endl;
+	TestFile << Example << "\n" << OutputStream::Flush();
 	Arguments.push_back(TestFileLocation.AsAbsoluteString());
 	Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
 	if (Verbose)
 		while (!Compiler.In.HasFailed())
-			std::cout << "Compiler output: " << Compiler.In.ReadLine() << std::endl;
+			StandardStream << "Compiler output: " << Compiler.In.ReadLine() << "\n" << OutputStream::Flush();
 	else Compiler.In.ReadToEnd();
 	TestFileLocation.Delete();
 	return Compiler.GetResult() == 0;
 }
 
-String CXXCompiler::GetIdentifier(void) { return "c++-compiler"; }
+String CXXCompiler::GetIdentifier(void) { return "CXXCompiler"; }
 
-void CXXCompiler::DisplayControllerHelp(std::ostream &Out)
+void CXXCompiler::DisplayControllerHelp(void)
 {
-	Out << "\t" << GetIdentifier() << " (" << SupportFlags::Generation2011 << ")\n"
-		"\tResult: COMPILER PATH\n"
+	StandardStream << "\tSelfDiscovery." << GetIdentifier() << "{FLAGS...}\n"
+		"\tResult: {Name = COMPILER, Path = PATH}\n"
 		"\tLocates a C++ compiler, returning the name in COMPILER and the full path, including executable, in PATH.  FLAGS is a space-separated list of flags that specify requirements for the compiler.\n"
 		"\tCOMPILER will be one of: " << Compilers::GXX << ", " << Compilers::Clang << ", " << Compilers::CLEXE << "\n"
 		"\tFLAGS can include: " << SupportFlags::Generation2011 << "\n"
 		"\n";
 }
 
-void CXXCompiler::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &Out) 
+void CXXCompiler::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	Set<String> Flags;
 	while (!Arguments.empty())
@@ -57,16 +57,12 @@ void CXXCompiler::DisplayUserHelp(std::queue<String> &&Arguments, std::ostream &
 		Arguments.pop();
 	}
 
-	Out << "\t" << GetIdentifier() << "=PATH\n"
-		"\tOverride the detected C++ compiler.";
-	if (Flags.Contains(SupportFlags::Generation2011))
-		Out << "  The compiler must support C++11.";
-	Out << "\n\n";
+	HelpItems.Add(GetIdentifier() + "=PATH", "Override the detected C++ compiler." + (Flags.Contains(SupportFlags::Generation2011) ? "  The compiler must support C++11." : ""));
 }
 
 String const CXX11Example = "#include <functional>\nint main(int argc, char **argv) { std::function<void(void)> a; return 0; }";
 
-void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void CXXCompiler::Respond(Script &State)
 {
 	Set<String> Flags;
 	while (!Arguments.empty())
@@ -77,7 +73,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 
 	auto TestCompiler = [&](FilePath const &Compiler) -> bool
 	{
-		if (Verbose) std::cout << "Testing compiler " << Compiler << ".\n";
+		if (Verbose) StandardStream << "Testing compiler " << Compiler << ".\n";
 		String const CompilerFile = Compiler.File();
 		String Candidate = Compilers::GXX;
 		if ((CompilerFile == (Candidate = Compilers::GXX)) ||
@@ -85,7 +81,7 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		{
 			if (Flags.Contains(SupportFlags::Generation2011))
 			{
-				if (Verbose) std::cout << "Testing compiler for C++11 support." << std::endl;
+				if (Verbose) StandardStream << "Testing compiler for C++11 support." << "\n" << OutputStream::Flush();
 				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}) &&
 					!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++0x"}))
 					return false;
@@ -93,7 +89,10 @@ void CXXCompiler::Respond(std::queue<String> &&Arguments, std::ostream &Out)
 		}
 		else return false; // Maybe unknown compilers should just be accepted, or assume they take g++-style arguments?
 
-		Out << Candidate << " " << Compiler.AsAbsoluteString() << "\n";
+		State.PushString(Candidate);
+		State.SetElement("Name");
+		State.PushString(Compiler.AsAbsoluteString());
+		State.PutElement("Path");
 		return true;
 	};
 

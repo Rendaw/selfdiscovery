@@ -3,18 +3,16 @@ tup.dofile '../ren-general/build/files.tup'
 
 Sources = 
 {
-	'../information/platform.cxx',
-	'../information/flag.cxx',
-	'../information/cxxcompiler.cxx',
-	'../information/version.cxx',
-	'../information/location.cxx',
-	'../information/blank.cxx',
-	'../information/program.cxx',
-	'../information/clibrary.cxx',
+	'../main.cxx',
 	'../shared.cxx',
-	'../information.cxx',
-	'../configuration.cxx',
-	'../main.cxx'
+	'../blank.cxx',
+	'../version.cxx',
+	'../flag.cxx',
+	'../platform.cxx',
+	'../location.cxx',
+	'../program.cxx',
+	'../cxxcompiler.cxx',
+	'../clibrary.cxx'
 }
 
 Objects = {}

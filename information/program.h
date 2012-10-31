@@ -3,18 +3,16 @@
 #endif
 #define PROGRAM_H
 
-#include <queue>
-
-#include "ren-general/string.h"
-#include "ren-general/lifetime.h"
-#include "ren-general/filesystem.h"
+#include "../information.h"
+#include "../ren-general/lifetime.h"
+#include "../ren-general/filesystem.h"
 
 class Program
 {
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, std::map<String, String> &HelpItems);
+		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
 		void Respond(Script &State);
 		Program(void);
 		FilePath *FindProgram(String const &ProgramName);

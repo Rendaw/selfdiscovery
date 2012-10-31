@@ -1,0 +1,17 @@
+tup.dorulesfile()
+tup.dofile 'files.tup'
+
+if tup.getconfig('PLATFORM') == 'linux'
+then
+        CompileFlags = CompileFlags .. ' -DLUA_USE_LINUX'
+end
+        
+CompileFlags = CompileFlags .. 
+	' -DLUA_COMPAT_ALL' .. 
+	' -Wno-switch-enum'
+
+for Index, Source in ipairs(LuaSources)
+do
+	Rule.Object(Source)
+end
+

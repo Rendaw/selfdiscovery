@@ -1,65 +1,64 @@
 #include "configuration.h"
 
+#include "ren-general/arrangement.h"
+#include "ren-general/range.h"
+
+#include "shared.h"
+
 std::map<String, Configuration> ProgramConfiguration;
 
 std::pair<bool, String> FindConfiguration(String const &Name)
 {
-	for (Set<String>::iterator ArgumentFound = ProgramArguments.lower_bound(Name); ArgumentFound != ProgramArguments.end(); ArgumentFound++)
-	{
-		if (ArgumentFound->length() < Name.length()) break;
-		if (ArgumentFound->substr(0, Name.length()) != Name) break;
-		if (ArgumentFound->length() == Name.length()) 
-			return std::pair<bool, String>(true, String());
-		if ((*ArgumentFound)[Name.length()] != '=') continue;
-		return std::pair<bool, String>(true, ArgumentFound->substr(Name.length() + 1, String::npos));
-	}
+	std::map<String, Configuration>::iterator Found = ProgramConfiguration.find(Name);
+	if (Found != ProgramConfiguration.end())
+		return std::pair<bool, String>(true, Found->first);
 	return std::pair<bool, String>(false, String());
 }
 
-void LoadConfigArguments(FilePath const &File)
+void LoadConfigurationFile(FilePath const &File)
 {
 	try 
 	{
 		FileInput UserOverrides = File;
-	}
-	catch (Error::System &Error) { return; }
 
-	String ConfigArgument;
-	bool InputRemains = true;
+		String ConfigLine;
+		bool InputRemains = true;
 
-	while (InputRemains)
-	{
-		StringSplitter StripWhitespace({' ', '\t'}, true);
-		while (1)
+		while (InputRemains)
 		{
-			if (!(UserOverrides >> ConfigLine))
+			StringSplitter StripWhitespace({' ', '\t'}, true);
+			while (1)
 			{
-				InputRemains = false;
-				break;
+				if (!(UserOverrides >> ConfigLine))
+				{
+					InputRemains = false;
+					break;
+				}
+
+				if (StripWhitespace.Process(ConfigLine).Finished())
+					break;
 			}
 
-			if (StripWhitespace.Process(ConfigLine).Finished())
-				break;
+			if (StripWhitespace.Results().empty()) continue;
+
+			StringSplitter SplitKeyValue({'='}, false);
+			SplitKeyValue.Process(StripWhitespace.Results().front());
+			assert(SplitKeyValue.Finished());
+			assert(RangeD(1,2).Contains(SplitKeyValue.Results().size()));
+			String Key = SplitKeyValue.Results().front();
+			SplitKeyValue.Results().pop();
+			String Value = SplitKeyValue.Results().back();
+			ProgramConfiguration[Key] = {Value, File};
 		}
-
-		if (StripWhitespace.Results().empty()) continue;
-
-		StringSplitter SplitKeyValue({'='}, false);
-		SplitKeyValue.Process(StripWhitespace.Results().front());
-		assert(SplitKeyValue.Finished());
-		assert(RangeD(1,2).Contains(SplitKeyValue.Results()));
-		String Key = Results().front();
-		Results().pop();
-		String Value = Results.back();
-		ProgramConfiguration[Key] = {Value, File};
 	}
+	catch (Error::System &Error) { }
 }
 
-void LoadConfiruationCommandline(String const &Argument)
+void LoadConfigurationCommandline(String const &Argument)
 {
 	size_t EqualsPosition;
 	if ((EqualsPosition = Argument.find('=')) == String::npos)
-		ProgramConfiguration[Key] = {"", "command line"};
+		ProgramConfiguration[Argument] = {"", "command line"};
 	else
 	{
 		assert(EqualsPosition < Argument.length());
@@ -68,4 +67,6 @@ void LoadConfiruationCommandline(String const &Argument)
 		ProgramConfiguration[Key] = {Value, "command line"};
 	}
 }
+
+std::map<String, Configuration> const &GetProgramConfiguration() { return ProgramConfiguration; }
 

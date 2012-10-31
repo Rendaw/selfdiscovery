@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "shared.h"
+#include "../shared.h"
 
 typedef unsigned int VersionType;
 VersionType const CurrentVersion = 0;
@@ -23,10 +23,9 @@ void Version::Respond(Script &State)
 	if (State.TryElement("Version"))
 	{
 		State.AssertNumber("Version must be a number.");
-		VersionType InputVersion = std::numeric_limits<VersionType>::max();
-		MemoryStream(State.GetUnsignedInteger()) >> InputVersion;
+		VersionType InputVersion = State.GetUnsignedInteger();
 		if (InputVersion > CurrentVersion)
-			throw InteractionError("The control script requires version " + Arguments.front() + " which is newer than this version (" + AsString(CurrentVersion) + ").  Please upgrade this program to continue.");
+			throw InteractionError("The control script requires version " + AsString(InputVersion) + " which is newer than this version (" + AsString(CurrentVersion) + ").  Please upgrade this program to continue.");
 	}
 
 	State.PushInteger(CurrentVersion);

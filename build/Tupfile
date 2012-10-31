@@ -1,18 +1,22 @@
 tup.dorulesfile()
 tup.dofile '../ren-general/build/files.tup'
+tup.dofile '../ren-script/build/files.tup'
+tup.dofile '../lua/lua-5.2.0/src/files.tup'
 
 Sources = 
 {
 	'../main.cxx',
 	'../shared.cxx',
-	'../blank.cxx',
-	'../version.cxx',
-	'../flag.cxx',
-	'../platform.cxx',
-	'../location.cxx',
-	'../program.cxx',
-	'../cxxcompiler.cxx',
-	'../clibrary.cxx'
+	'../information.cxx',
+	'../configuration.cxx',
+	'../subprocess.cxx',
+	'../information/version.cxx',
+	'../information/flag.cxx',
+	'../information/platform.cxx',
+	'../information/location.cxx',
+	'../information/program.cxx',
+	'../information/cxxcompiler.cxx',
+	'../information/clibrary.cxx'
 }
 
 Objects = {}
@@ -20,10 +24,9 @@ for Index, Source in ipairs(Sources)
 do
 	table.insert(Objects, Rule.Object(Source))
 end
-for Index, Object in ipairs(RenGeneralObjects)
-do
-	table.insert(Objects, Object)
-end
+for Index, Object in ipairs(RenGeneralObjects) do table.insert(Objects, Object) end
+for Index, Object in ipairs(RenScriptObjects) do table.insert(Objects, Object) end
+for Index, Object in ipairs(LuaObjects) do table.insert(Objects, Object) end
 if tup.getconfig('PLATFORM') == 'windows'
 then
 	Rule.Executable(Objects, 'selfdiscovery.exe')

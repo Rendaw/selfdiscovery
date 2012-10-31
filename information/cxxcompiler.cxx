@@ -1,9 +1,11 @@
 #include "cxxcompiler.h"
 
-#include "ren-general/arrangement.h"
-#include "ren-general/filesystem.h"
+#include "../ren-general/arrangement.h"
+#include "../ren-general/filesystem.h"
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
+#include "../subprocess.h"
 #include "program.h"
 
 extern Information::AnchorImplementation<Program> ProgramInformation;
@@ -23,16 +25,15 @@ namespace Compilers
 
 static bool CompileExample(FilePath const &CompilerPath, String const &Example, std::vector<String> Arguments)
 {
-	FileOutput TestFile;
-	FilePath TestFileLocation = CreateTemporaryFile(LocateTemporaryDirectory(), TestFile);
-	TestFile << Example << "\n" << OutputStream::Flush();
-	Arguments.push_back(TestFileLocation.AsAbsoluteString());
+	auto TestFile = CreateTemporaryFile(LocateTemporaryDirectory());
+	std::get<1>(TestFile) << Example << "\n" << OutputStream::Flush();
+	Arguments.push_back(std::get<0>(TestFile).AsAbsoluteString());
 	Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
 	if (Verbose)
 		while (!Compiler.In.HasFailed())
 			StandardStream << "Compiler output: " << Compiler.In.ReadLine() << "\n" << OutputStream::Flush();
 	else Compiler.In.ReadToEnd();
-	TestFileLocation.Delete();
+	std::get<0>(TestFile).Delete();
 	return Compiler.GetResult() == 0;
 }
 
@@ -50,27 +51,13 @@ void CXXCompiler::DisplayControllerHelp(void)
 
 void CXXCompiler::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	Set<String> Flags;
-	while (!Arguments.empty())
-	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
-	}
-
-	HelpItems.Add(GetIdentifier() + "=PATH", "Override the detected C++ compiler." + (Flags.Contains(SupportFlags::Generation2011) ? "  The compiler must support C++11." : ""));
+	HelpItems.Add(GetIdentifier() + "=PATH", String("Override the detected C++ compiler.") + (GetFlag(State, SupportFlags::Generation2011) ? "  The compiler must support C++11." : ""));
 }
 
 String const CXX11Example = "#include <functional>\nint main(int argc, char **argv) { std::function<void(void)> a; return 0; }";
 
 void CXXCompiler::Respond(Script &State)
 {
-	Set<String> Flags;
-	while (!Arguments.empty())
-	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
-	}
-
 	auto TestCompiler = [&](FilePath const &Compiler) -> bool
 	{
 		if (Verbose) StandardStream << "Testing compiler " << Compiler << ".\n";
@@ -79,7 +66,7 @@ void CXXCompiler::Respond(Script &State)
 		if ((CompilerFile == (Candidate = Compilers::GXX)) ||
 			(CompilerFile.find("g++") != String::npos))
 		{
-			if (Flags.Contains(SupportFlags::Generation2011))
+			if (GetFlag(State, SupportFlags::Generation2011))
 			{
 				if (Verbose) StandardStream << "Testing compiler for C++11 support." << "\n" << OutputStream::Flush();
 				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}) &&
@@ -90,13 +77,13 @@ void CXXCompiler::Respond(Script &State)
 		else return false; // Maybe unknown compilers should just be accepted, or assume they take g++-style arguments?
 
 		State.PushString(Candidate);
-		State.SetElement("Name");
+		State.PutElement("Name");
 		State.PushString(Compiler.AsAbsoluteString());
 		State.PutElement("Path");
 		return true;
 	};
 
-	std::pair<bool, String> OverrideCompiler = FindProgramArgument(GetIdentifier());
+	std::pair<bool, String> OverrideCompiler = FindConfiguration(GetIdentifier());
 	if ((OverrideCompiler.first) && (TestCompiler(FilePath::Qualify(OverrideCompiler.second))))
 		return;
 	

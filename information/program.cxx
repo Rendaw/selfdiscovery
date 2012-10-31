@@ -2,7 +2,8 @@
 
 #include <cstdlib>
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
 
 extern bool Verbose;
 
@@ -10,7 +11,7 @@ String Program::GetIdentifier(void) { return "program"; }
 
 void Program::DisplayControllerHelp(void)
 {
-	Out << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
 		"\tResult: {Location = LOCATION}\n"
 		"\tLocates program NAME and returns the LOCATION.  If FLAGS contains Optional, failure to locate the program will not terminate discovery, but nil will be returned rather than a table.\n"
 		"\n";
@@ -27,9 +28,9 @@ static std::vector<DirectoryPath> GetPathParts(void)
 	std::vector<DirectoryPath> Out;
 	String FullPATH = getenv("PATH");
 #ifdef _WIN32
-	std::queue<String> PathParts = SplitString(FullPATH, {';'}, true);
+	std::queue<String> PathParts = StringSplitter({';'}, true).Process(FullPATH).Results();
 #else
-	std::queue<String> PathParts = SplitString(FullPATH, {':'}, true);
+	std::queue<String> PathParts = StringSplitter({':'}, true).Process(FullPATH).Results();
 #endif
 	while (!PathParts.empty())
 	{
@@ -52,15 +53,9 @@ Program::Program(void) : Paths(GetPathParts())
 void Program::Respond(Script &State)
 {
 	String ProgramName = GetArgument(State, "Name");
-	Set<String> Flags;
-	while (!Arguments.empty())
-	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
-	}
 
 	FilePath *Found = FindProgram(ProgramName);
-	if ((Found == nullptr) && !GetFlag("Optional"))
+	if ((Found == nullptr) && !GetFlag(State, "Optional"))
 		throw InteractionError("Failed to find required program " + ProgramName);
 	
 	if (Found != nullptr) 
@@ -77,7 +72,7 @@ FilePath *Program::FindProgram(String const &ProgramName)
 	if (FoundProgram == Programs.end()) 
 	{
 		// Check to see if the user's explicitly set the program's location
-		std::pair<bool, String> OverrideProgram = FindProgramArgument(GetIdentifier() + "-" + ProgramName);
+		std::pair<bool, String> OverrideProgram = FindConfiguration(GetIdentifier() + "-" + ProgramName);
 		if (OverrideProgram.first)
 		{
 			FilePath OverridePath(FilePath::Qualify(OverrideProgram.second));

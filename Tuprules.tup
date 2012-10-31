@@ -1,7 +1,18 @@
-CompileFlags = '-std=gnu++11 -Wall -pedantic ' .. tup.getconfig('CFLAGS')
+StripPath = function(Filename)
+	return string.gsub(Filename, '[^/]*/', '')
+end
+
+NormalizeSlashes = function(Filename)
+	return string.gsub(Filename, '\\', '/')
+end
+
+CompileFlags = '-std=gnu++11 -Wall -pedantic ' .. tup.getconfig('CFLAGS') .. ' -DINTREELUA -I' .. NormalizeSlashes(tup.getcwd()) .. '/lua/lua-5.2.0/src/'
+LinkFlags = '-Wall -pedantic'
+LinkLibraries = '-ldl'
 if tup.getconfig('DEBUG') == 'true'
 then
 	CompileFlags = CompileFlags .. ' -ggdb -O0'
+	LinkFlags = LinkFlags .. ' -ggdb -O0'
 else
 	CompileFlags = CompileFlags .. ' -O3 -DNDEBUG'
 end
@@ -18,14 +29,6 @@ then
 	CommandSuffix = '\''
 end
 
-StripPath = function(Filename)
-	return string.gsub(Filename, '../', '')
-end
-
-NormalizeSlashes = function(Filename)
-	return string.gsub(Filename, '\\', '/')
-end
-
 Rule = 
 {
 	Object = function(Input)
@@ -40,13 +43,7 @@ Rule =
 		tup.definerule{
 			inputs = Inputs,
 			outputs = {Output},
-			command = CommandPrefix .. tup.getconfig('COMPILER') .. ' ' .. CompileFlags .. ' ' .. table.concat(Inputs, ' ') .. ' -o ' .. Output .. CommandSuffix}
+			command = CommandPrefix .. tup.getconfig('COMPILER') .. ' ' .. LinkFlags .. ' ' .. table.concat(Inputs, ' ') .. ' ' .. LinkLibraries .. ' -o ' .. Output .. CommandSuffix}
 	end,
-	LightArchive = function(Inputs, Output)
-		tup.definerule{
-			inputs = Inputs,
-			outputs = {Output},
-			command = CommandPrefix .. 'rm -f ' .. Output .. ' && ar rsT ' .. Output .. ' ' .. table.concat(Inputs, ' ') .. CommandSuffix}
-	end
 }
 

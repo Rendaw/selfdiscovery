@@ -1,13 +1,11 @@
 #include "flag.h"
 
-#include "ren-general/arrangement.h"
+#include "../ren-general/arrangement.h"
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
 
 String Flag::GetIdentifier(void) { return "flag"; }
-
-static String GetFlagName(std::queue<String> &Arguments)
-	{ return GetNextArgument(Arguments, "flag name"); }
 
 void Flag::DisplayControllerHelp(void)
 {
@@ -26,8 +24,8 @@ void Flag::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 
 void Flag::Respond(Script &State)
 {
-	String FlagName = GetFlagName(Arguments);
-	std::pair<bool, String> Flag = FindProgramArgument(FlagName);
+	String FlagName = GetArgument(State, "Name");
+	std::pair<bool, String> Flag = FindConfiguration(FlagName);
 	State.PushBoolean(Flag.first);
 	State.PutElement("Present");
 	if (Flag.first && !Flag.second.empty())

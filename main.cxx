@@ -10,21 +10,20 @@
 #include "ren-general/lifetime.h"
 
 #include "shared.h"
+#include "configuration.h"
 
 // Global information and information types - used in main loop and in individual info types and such
 enum RunModes { Normal, Help, ControllerHelp } RunMode = Normal;
 bool Verbose = false;
 
-#include "blank.h"
-#include "version.h"
-#include "flag.h"
-#include "platform.h"
-#include "location.h"
-#include "program.h"
-#include "cxxcompiler.h"
-#include "clibrary.h"
+#include "information/version.h"
+#include "information/flag.h"
+#include "information/platform.h"
+#include "information/location.h"
+#include "information/program.h"
+#include "information/cxxcompiler.h"
+#include "information/clibrary.h"
 		
-Information::AnchorImplementation<Blank> BlankInformation;
 Information::AnchorImplementation<Version> VersionInformation;
 Information::AnchorImplementation<Flag> FlagInformation;
 Information::AnchorImplementation<Platform> PlatformInformation;
@@ -45,9 +44,9 @@ int main(int argc, char **argv)
 		String ControllerName = argv[1];
 
 		// Get configuration/overrides, prioritize closer stuff (commandline, user files) over more distant stuff (global config files)
-		LoadConfiguragionFile(LocateGlobalConfigFile("selfdiscovery.config"));
-		LoadConfiguragionFile(LocateUserConfigFile("selfdiscovery.config"));
-		LoadConfiguragionFile(LocateWorkingDirectory().Select("selfdiscovery.config"));
+		LoadConfigurationFile(LocateGlobalConfigFile("selfdiscovery.config"));
+		LoadConfigurationFile(LocateUserConfigFile("selfdiscovery.config"));
+		LoadConfigurationFile(LocateWorkingDirectory().Select("selfdiscovery.config"));
 		
 		for (unsigned int CurrentArgumentIndex = 2; CurrentArgumentIndex < (unsigned int)argc; CurrentArgumentIndex++)
 			LoadConfigurationCommandline(argv[CurrentArgumentIndex]);
@@ -58,15 +57,13 @@ int main(int argc, char **argv)
 
 		if (Verbose)
 		{
-			for (auto ConfigurationElement : ProgramConfiguration)
+			for (auto ConfigurationElement : GetProgramConfiguration())
 				StandardStream << "Configuration setting: \'" << ConfigurationElement.first << "\' = \'" << ConfigurationElement.second.Value << "\', from " << ConfigurationElement.second.Source << "\n" << OutputStream::Flush();
 
 		}
 
 		// Prepare a list of information items for next operations
-		DeleterList<Information::Anchor *> InformationItems = 
-		{
-			&BlankInformation,
+		DeleterList<Information::Anchor> InformationItems({
 			&VersionInformation,
 			&FlagInformation,
 			&PlatformInformation,
@@ -76,8 +73,7 @@ int main(int argc, char **argv)
 			&ConfigInstallInformation,
 			&ProgramInformation,
 			&CXXCompilerInformation,
-			&CLibraryInformation
-		};
+			&CLibraryInformation});
 
 		// Display controller help and exit early if that flag was set
 		if (RunMode == RunModes::ControllerHelp)
@@ -100,16 +96,16 @@ int main(int argc, char **argv)
 
 		// Prepare and run the controller
 		Script ControlScript;
-		ControlScript.CreateTable();
+		ControlScript.PushTable();
 
-		HelpItemCollection HelpItems;
+		HelpItemCollector HelpItems;
 			
 		for (auto &InformationItem : InformationItems)
 		{
 			if (RunMode == RunModes::Help)
-				ControlScript.PushFunction(InformationItem->GetUserHelpCallback(HelpItems))
-			else ControlScript.PushFunction(InformationItem->GetCallback())
-			ControlScript.PutElement(InformationItem->GetName());
+				ControlScript.PushFunction(InformationItem->GetUserHelpCallback(HelpItems));
+			else ControlScript.PushFunction(InformationItem->GetCallback());
+			ControlScript.PutElement(InformationItem->GetIdentifier());
 		}
 
 		ControlScript.SaveGlobal("SelfDiscovery");
@@ -132,14 +128,14 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	catch (InteractionError &Error)
+	catch (InteractionError &Failure)
 	{
-		std::cerr << "Self discovery failed with error: " << Error.Message << std::endl;
+		StandardErrorStream << "Self discovery failed with error: " << Failure.Explanation << "\n" << OutputStream::Flush();
 		return 1;
 	}
-	catch (ControllerError &Error)
+	catch (Error::Input &Failure)
 	{
-		std::cerr << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Error.Message << std::endl;
+		StandardErrorStream << "The configuration script behaved incomprehensibly.  Check that you have the latest version of self discovery, and, if you do and the problem persists, please report this to the package maintainer:\n\t" << Failure.Explanation << "\n" << OutputStream::Flush();
 		return 1;
 	}
 

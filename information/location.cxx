@@ -4,24 +4,23 @@
 #include <shlobj.h>
 #endif
 
-#include "ren-general/arrangement.h"
+#include "../ren-general/arrangement.h"
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
 #include "platform.h"
 
 extern Information::AnchorImplementation<Platform> PlatformInformation;
 
-static String GetProjectName(std::queue<String> &Arguments)
-	{ return GetNextArgument(Arguments, "project name"); }
-
 #ifdef _WIN32
-static void DumpProjectInstallDirectory(std::ostream &Out, String const &Project)
+static void DumpProjectInstallDirectory(Script &State, String const &Project)
 {
 	wchar_t PathResult[MAX_PATH];
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't locate executable installation directory!  Received error " + AsString(Result));
-	Out << AsString(PathResult) << "\\" << Project << "\n";
+	State.PushString(AsString(PathResult) << "\\" << Project);
+	State.PutElement("Location");
 }
 #endif
 
@@ -36,44 +35,41 @@ void InstallExecutableDirectory::DisplayControllerHelp(void)
 		"\n";
 }
 
-void InstallExecutableDirectory::DisplayUserHelp(Script &State, HelpItemCollection &HelpItems)
+void InstallExecutableDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	HelpItemCollection.Add("prefix=LOCATION", "Overrides the default executable installation directory to use LOCATION/bin.");
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default executable installation directory to use LOCATION/bin.");
 
-	HelpItemCollection.Add(GetIdentifier() + "=LOCATION", "Overrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.");
+	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default executable installation directory to use LOCATION.  If the 64-bit executable location is not overridden, LOCATION is also used for the 64-bit executable installation directory.");
 }
 
-void InstallExecutableDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallExecutableDirectory::Respond(Script &State)
 {
-	String ProjectName = GetProjectName(Arguments);
-	Set<String> Flags;
-	while (!Arguments.empty())
-	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
-	}
+	String ProjectName = GetArgument(State, "Project");
 
-	std::pair<bool, String> OverrideExecutable = FindProgramArgument(GetIdentifier());
+	std::pair<bool, String> OverrideExecutable = FindConfiguration(GetIdentifier());
 	if (OverrideExecutable.first)
 	{
-		Out << OverrideExecutable.second << "\n";
+		State.PushString(OverrideExecutable.second);
+		State.PutElement("Location");
 		return;
 	}
 
-	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	std::pair<bool, String> OverridePrefix = FindConfiguration("Prefix");
 	
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/bin\n";
+		State.PushString(OverridePrefix.second << "/bin");
+		State.PutElement("Location");
 		return;
 	}
-	DumpProjectInstallDirectory(Out, ProjectName);
+	DumpProjectInstallDirectory(Script, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	Out << Prefix << "/bin\n";
+	State.PushString(Prefix + "/bin");
+	State.PutElement("Location");
 #endif
 }
 
@@ -90,39 +86,36 @@ void InstallLibraryDirectory::DisplayControllerHelp(void)
 void InstallLibraryDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	HelpItems.Add("Prefix=LOCATION", "Overrides the default library installation directory to use LOCATION/bin.");
-	HelpItem.Add(GetIdentifier() + "=LOCATION", "Overrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.");
+	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default library installation directory to use LOCATION.  If the 64-bit library location is not overridden, LOCATION is also used for the 64-bit library installation directory.");
 }
 
-void InstallLibraryDirectory::Respond(Script &state)
+void InstallLibraryDirectory::Respond(Script &State)
 {
-	String ProjectName = GetProjectName(Arguments);
-	Set<String> Flags;
-	while (!Arguments.empty())
-	{
-		Flags.And(Arguments.front());
-		Arguments.pop();
-	}
+	String ProjectName = GetArgument(State, "Project");
 
-	std::pair<bool, String> OverrideExecutable = FindProgramArgument(GetIdentifier());
-	if (OverrideExecutable.first)
+	std::pair<bool, String> OverrideLibrary = FindConfiguration(GetIdentifier());
+	if (OverrideLibrary.first)
 	{
-		Out << OverrideExecutable.second << "\n";
+		State.PushString(OverrideLibrary.second);
+		State.PutElement("Location");
 		return;
 	}
 
-	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	std::pair<bool, String> OverridePrefix = FindConfiguration("Prefix");
 	
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/bin\n";
+		State.PushString(OverridePrefix.second + "/bin");
+		State.PutElement("Location");
 		return;
 	}
-	DumpProjectInstallDirectory(Out, ProjectName);
+	DumpProjectInstallDirectory(Script, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
+	MemoryStream Out;
 	Out << Prefix;
 	if (PlatformInformation->GetLinuxClass() == Platform::LinuxClasses::Debian)
 	{
@@ -134,7 +127,8 @@ void InstallLibraryDirectory::Respond(Script &state)
 		if (PlatformInformation->GetArchitectureBits() == 64) Out << "/lib64";
 		else Out << "/lib";
 	}
-	Out << "\n";
+	State.PushString(Out);
+	State.PutElement("Location");
 #endif
 }
 
@@ -150,34 +144,37 @@ void InstallDataDirectory::DisplayControllerHelp(void)
 
 void InstallDataDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	String ProjectName = GetProjectName(Arguments);
-	HelpItems.Add("Prefix=LOCATION", "Overrides the default data installation directory to use LOCATION/share/" << ProjectName << ".");
+	String ProjectName = GetArgument(State, "Project");
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default data installation directory to use LOCATION/share/" + ProjectName + ".");
 	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default data installation directory to use LOCATION.");
 }
 
-void InstallDataDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallDataDirectory::Respond(Script &State)
 {
-	String ProjectName = GetProjectName(Arguments);
-	std::pair<bool, String> OverrideData = FindProgramArgument(GetIdentifier());
+	String ProjectName = GetArgument(State, "Project");
+	std::pair<bool, String> OverrideData = FindConfiguration(GetIdentifier());
 	if (OverrideData.first)
 	{
-		Out << OverrideData.second << "\n";
+		State.PushString(OverrideData.second);
+		State.PutElement("Location");
 		return;
 	}
 
-	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	std::pair<bool, String> OverridePrefix = FindConfiguration("Prefix");
 
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/share/" << ProjectName << "\n";
+		State.PushString(OverridePrefix.second + "/share/" + ProjectName);
+		State.PutElement("Location");
 		return;
 	}
 	DumpProjectInstallDirectory(Out, ProjectName);
 #else
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	Out << Prefix << "/share/" << ProjectName << "\n";
+	State.PushString(Prefix + "/share/" + ProjectName);
+	State.PutElement("Location");
 #endif
 }
 
@@ -193,25 +190,27 @@ void InstallGlobalConfigDirectory::DisplayControllerHelp(void)
 
 void InstallGlobalConfigDirectory::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	String ProjectName = GetProjectName(Arguments);
-	HelpItems.Add("Prefix=LOCATION", "Overrides the default config installation directory to use LOCATION/etc/" << ProjectName << ".");
+	String ProjectName = GetArgument(State, "Project");
+	HelpItems.Add("Prefix=LOCATION", "Overrides the default config installation directory to use LOCATION/etc/" + ProjectName + ".");
 	HelpItems.Add(GetIdentifier() + "=LOCATION", "Overrides the default data installation directory to use LOCATION.");
 }
 
-void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::ostream &Out)
+void InstallGlobalConfigDirectory::Respond(Script &State)
 {
-	String ProjectName = GetProjectName(Arguments);
-	std::pair<bool, String> OverrideConfig = FindProgramArgument(GetIdentifier());
+	String ProjectName = GetArgument(State, "Project");
+	std::pair<bool, String> OverrideConfig = FindConfiguration(GetIdentifier());
 	if (OverrideConfig.first)
 	{
-		Out << OverrideConfig.second << "\n";
+		State.PushString(OverrideConfig.second);
+		State.PutElement("Location");
 		return;
 	}
 
-	std::pair<bool, String> OverridePrefix = FindProgramArgument("prefix");
+	std::pair<bool, String> OverridePrefix = FindConfiguration("prefix");
 	if (OverridePrefix.first)
 	{
-		Out << OverridePrefix.second << "/etc/" << ProjectName << "\n";
+		State.PushString(OverridePrefix.second + "/etc/" + ProjectName);
+		State.PutElement("Location");
 		return;
 	}
 #ifdef WINDOWS
@@ -219,9 +218,11 @@ void InstallGlobalConfigDirectory::Respond(std::queue<String> &&Arguments, std::
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't find global config directory!  Received error " + AsString(Result));
-	Out << AsString(PathResult) << "\n";
+	State.PushString(AsString(PathResult));
+	State.PutElement("Location");
 #else
-	Out << "/usr/etc" << "\n";
+	State.PushString("/usr/etc");
+	State.PutElement("Location");
 #endif
 }
 

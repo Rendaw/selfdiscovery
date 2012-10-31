@@ -1,6 +1,7 @@
 #include "clibrary.h"
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
 #include "platform.h"
 
 extern bool Verbose;
@@ -18,17 +19,16 @@ void CLibrary::DisplayControllerHelp()
 
 void CLibrary::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	String LibraryName = GetArgument(Arguments, "Name");
+	String LibraryName = GetArgument(State, "Name");
 	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "=LOCATION",
 		MemoryStream() << "Overrides the location of library " << LibraryName << ".  This path should include both the absolute directory and the filename.  Unless the include location is separately overridden, the include path will be deduced from LOCATION.");
-	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-includes=LOCATION", "Overrides the location of include files for library " << LibraryName << ".");
+	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".");
 }
 
 static std::vector<DirectoryPath> SplitEnvironmentVariableParts(String const &Raw)
 {
 	std::vector<DirectoryPath> Out;
-	StringSplitter({':'}, true).Process(Raw);
-	std::queue<String> &Parts = Process.Results();
+	std::queue<String> Parts = StringSplitter({':'}, true).Process(Raw).Results();
 	while (!Parts.empty())
 	{
 		Out.push_back(DirectoryPath::Qualify(Parts.front()));
@@ -159,7 +159,7 @@ void CLibrary::Respond(Script &State)
 		{
 			if (Verbose) StandardStream << "Testing for library " << LibraryName << " at " << Location << "\n" << OutputStream::Flush();
 			if (!Location.Exists()) return false;
-			State.PushString(Location.File())
+			State.PushString(Location.File());
 			State.PutElement("Filename");
 			State.PushString(Location.Directory());
 			State.PutElement("LibraryDirectory");
@@ -173,13 +173,13 @@ void CLibrary::Respond(Script &State)
 
 			if (PlatformInformation->GetFamily() == Platform::Families::Windows)
 			{
-				if (GetFlag("Static"))
+				if (GetFlag(State, "Static"))
 					{ if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".lib"))) return; }
 				else if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".dll"))) return;
 			}
 			else
 			{
-				if (GetFlag("Static"))
+				if (GetFlag(State, "Static"))
 				{
 					if (ProcessLibraryLocation(TestLocation.Select("lib" + LibraryName + ".a"))) return;
 					if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".a"))) return;
@@ -193,7 +193,7 @@ void CLibrary::Respond(Script &State)
 		}
 	}
 
-	if (!GetFlag("Optional"))
+	if (!GetFlag(State, "Optional"))
 		throw InteractionError("Could not find required library " + LibraryName + ".  If you believe you have the library, check the help and specify the correct location on the command line.");
 }
 

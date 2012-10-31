@@ -1,9 +1,7 @@
 #ifndef LOCATION_H
 #define LOCATION_H
 
-#include <queue>
-
-#include "ren-general/string.h"
+#include "../information.h"
 
 class InstallExecutableDirectory
 {
@@ -36,7 +34,7 @@ class InstallGlobalConfigDirectory
 {
 	public:
 		static String GetIdentifier(void);
-		static void DisplayControllerHelp(std::ostream &Out);
+		static void DisplayControllerHelp(void);
 		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
 		void Respond(Script &State);
 };

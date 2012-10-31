@@ -3,16 +3,14 @@
 #endif
 #define VERSION_H
 
-#include <queue>
-
-#include "ren-general/string.h"
+#include "../information.h"
 
 class Version
 {
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, std::map<String, String> &HelpItems);
+		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
 		void Respond(Script &State);
 };
 

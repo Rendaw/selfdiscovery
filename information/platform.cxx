@@ -2,7 +2,8 @@
 
 #include <cassert>
 
-#include "shared.h"
+#include "../shared.h"
+#include "../configuration.h"
 
 extern bool Verbose;
 
@@ -33,15 +34,12 @@ String const Platform::LinuxClasses::Arch;
 
 Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), ArchitectureBits(sizeof(void *) * 8), LinuxClass(LinuxClasses::Invalid)
 {
-	std::pair<bool, String> OverrideArchitecture = FindProgramArgument("arch");
+	std::pair<bool, String> OverrideArchitecture = FindConfiguration("Arch");
 	if (OverrideArchitecture.first)
-	{
-		StringStream Value(OverrideArchitecture.second);
-		Value >> ArchitectureBits;
-	}
+		MemoryStream(OverrideArchitecture.second) >> ArchitectureBits;
 
-	std::pair<bool, String> OverrideFamily = FindProgramArgument("platform-family"),
-		OverrideMember = FindProgramArgument("platform-member");
+	std::pair<bool, String> OverrideFamily = FindConfiguration("PlatformFamily"),
+		OverrideMember = FindConfiguration("PlatformMember");
 
 #ifdef _WIN32
 	Family = Families::Windows;
@@ -93,7 +91,7 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 	Family = Families::Linux;
 	FileInput LSBRelease(AsNativeString(FilePath("/etc/lsb-release")));
 	String LSBReleaseLine;
-	while (std::getline(LSBRelease, LSBReleaseLine))
+	while (LSBRelease >> LSBReleaseLine)
 	{
 		if (LSBReleaseLine.find("Ubuntu")) Member = Members::LinuxUbuntu;
 		else if (LSBReleaseLine.find("Debian")) Member = Members::LinuxDebian;
@@ -129,7 +127,7 @@ static String PrintEnumerations(void)
 
 }
 		
-void Platform::DisplayControllerHelp(std::ostream &Out)
+void Platform::DisplayControllerHelp(void)
 {
 	StandardStream << "\tDiscover." << GetIdentifier() << "{}\n"
 		"\tResult: {Family = FAMILY, Member = MEMBER, Arch = ARCH}\n"
@@ -140,7 +138,7 @@ void Platform::DisplayControllerHelp(std::ostream &Out)
 		"\n";
 }
 
-void Platform::DisplayUserHelp(Script &State, HelpItemCollection &HelpItems)
+void Platform::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	HelpItems.Add("PlatformFamily=FAMILY", "Overrides the detected platform family with FAMILY.");
 	HelpItems.Add("PlatformMember=MEMBER", "Overrides the detected platform family and member with FAMILY and MEMBER." + PrintEnumerations());
@@ -153,7 +151,7 @@ void Platform::Respond(Script &State)
 	State.PutElement("Family");
 	State.PushString(Member);
 	State.PutElement("Member");
-	State.PushString(ArchitectureBits);
+	State.PushInteger(ArchitectureBits);
 	State.PutElement("Arch");
 }
 

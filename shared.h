@@ -11,8 +11,8 @@
 
 struct InteractionError // When the system or user fails
 {
-	InteractionError(String const &Message);
-	String Message;
+	InteractionError(String const &Explanation);
+	String Explanation;
 };
 
 class StringSplitter
@@ -20,7 +20,7 @@ class StringSplitter
 	public:
 		StringSplitter(Set<char> const &Delimiters, bool DropBlanks);
 		StringSplitter &Process(String const &Input);
-		bool Unfinished(void); // Open quotes or unused escape (at end of input)
+		bool Finished(void); // Open quotes or unused escape (at end of input)
 		std::queue<String> &Results(void);
 	private:
 		Set<char> const &Delimiters;

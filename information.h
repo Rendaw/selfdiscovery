@@ -1,14 +1,24 @@
 #ifndef INFORMATION_H
 #define INFORMATION_H
 
-String GetArgument(Script &State, String const &Name); // Throws Error::User if missing or empty
+#include <map>
+
+#include "ren-general/string.h"
+#include "ren-general/inputoutput.h"
+#include "ren-general/arrangement.h"
+#include "ren-general/exception.h"
+#include "ren-script/script.h"
+
+#include "shared.h"
+
+String GetArgument(Script &State, String const &Name); // Throws Error::Input if missing or empty
 String GetOptionalArgument(Script &State, String const &Name); // Returns empty string if missing
 bool GetFlag(Script &State, String const &Name);
 
 class HelpItemCollector : public std::map<String, Set<String> >
 {
 	public:
-		Add(String const &Argument, String const &NewDescription);
+		void Add(String const &Argument, String const &NewDescription);
 };
 
 namespace Information
@@ -21,8 +31,9 @@ namespace Information
 	{
 		public:
 			virtual ~Anchor(void);
+			virtual String GetIdentifier(void) = 0;
 			virtual void DisplayControllerHelp(void) = 0;
-			virtual Script::Function GetUserHelpCallback(Script &State, std::map<String, String> &HelpItems) = 0;
+			virtual Script::Function GetUserHelpCallback(HelpItemCollector &HelpItems) = 0;
 			virtual Script::Function GetCallback(void) = 0;
 	};
 
@@ -32,10 +43,12 @@ namespace Information
 			AnchorImplementation(void) : AnchoredItem(nullptr) {}
 			~AnchorImplementation(void) { delete AnchoredItem; }
 			
+			String GetIdentifier(void) { return ItemClass::GetIdentifier(); }
+			
 			void DisplayControllerHelp(void) override
 				{ ItemClass::DisplayControllerHelp(); }
 			
-			Script::Function GetUserHelpCallback(Script &State, std::map<String, String> &HelpItems) override
+			Script::Function GetUserHelpCallback(HelpItemCollector &HelpItems) override
 			{
 				return [&](Script State) -> int
 				{
@@ -60,7 +73,7 @@ namespace Information
 						}
 						return 1;
 					}
-					catch (Error::User &Failure)
+					catch (Error::Input &Failure)
 					{
 						StandardErrorStream << "Controller error - please contact the controller's maintainer with this information: " << Failure.Explanation << "\n" << OutputStream::Flush();
 						throw Failure;
@@ -72,8 +85,8 @@ namespace Information
 					}
 					catch (InteractionError &Failure)
 					{
-						StandardErrorStream << Failure.Message << "\n" << OutputStream::Flush();
-						throw Error::System("Information gathering failed: " + Failure.Message);
+						StandardErrorStream << Failure.Explanation << "\n" << OutputStream::Flush();
+						throw Error::System("Information gathering failed: " + Failure.Explanation);
 					}
 				};
 			}

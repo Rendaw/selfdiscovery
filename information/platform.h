@@ -1,11 +1,8 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include <queue>
-#include <iostream>
-
-#include "ren-general/string.h"
-#include "ren-general/filesystem.h"
+#include "../information.h"
+#include "../ren-general/filesystem.h"
 
 class Platform
 {

@@ -1,6 +1,6 @@
 [submodule "ren-general"]
-	path = ren-general
+	path = app/ren-general
 	url = git@github.com:Rendaw/ren-general.git
 [submodule "ren-script"]
-	path = ren-script
+	path = app/ren-script
 	url = git@github.com:Rendaw/ren-script.git

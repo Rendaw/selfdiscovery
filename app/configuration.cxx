@@ -11,7 +11,7 @@ std::pair<bool, String> FindConfiguration(String const &Name)
 {
 	std::map<String, Configuration>::iterator Found = ProgramConfiguration.find(Name);
 	if (Found != ProgramConfiguration.end())
-		return std::pair<bool, String>(true, Found->first);
+		return std::pair<bool, String>(true, Found->second.Value);
 	return std::pair<bool, String>(false, String());
 }
 

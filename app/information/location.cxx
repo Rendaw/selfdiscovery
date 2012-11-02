@@ -10,6 +10,8 @@
 #include "../configuration.h"
 #include "platform.h"
 
+extern bool Verbose;
+
 extern Information::AnchorImplementation<Platform> PlatformInformation;
 
 #ifdef _WIN32
@@ -24,6 +26,12 @@ static void DumpProjectInstallDirectory(Script &State, String const &Project)
 }
 #endif
 
+void ReturnLocation(Script &State, String const &Location)
+{
+	State.PushTable();
+	State.PushString(Location);
+	State.PutElement("Location");
+}
 
 String InstallExecutableDirectory::GetIdentifier(void) { return "InstallExecutableDirectory"; }
 		
@@ -45,12 +53,13 @@ void InstallExecutableDirectory::DisplayUserHelp(Script &State, HelpItemCollecto
 void InstallExecutableDirectory::Respond(Script &State)
 {
 	String ProjectName = GetArgument(State, "Project");
+	ClearArguments(State);
 
 	std::pair<bool, String> OverrideExecutable = FindConfiguration(GetIdentifier());
-	if (OverrideExecutable.first)
+	if (OverrideExecutable.first) 
 	{
-		State.PushString(OverrideExecutable.second);
-		State.PutElement("Location");
+		if (Verbose) StandardStream << "Found " << GetIdentifier() << " for project \"" << ProjectName << "\" by configuration.\n" << OutputStream::Flush();
+		ReturnLocation(State, OverrideExecutable.second);
 		return;
 	}
 
@@ -59,8 +68,7 @@ void InstallExecutableDirectory::Respond(Script &State)
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		State.PushString(OverridePrefix.second << "/bin");
-		State.PutElement("Location");
+		ReturnLocation(State, OverridePrefix.second << "/bin");
 		return;
 	}
 	DumpProjectInstallDirectory(Script, ProjectName);
@@ -68,8 +76,7 @@ void InstallExecutableDirectory::Respond(Script &State)
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	State.PushString(Prefix + "/bin");
-	State.PutElement("Location");
+	ReturnLocation(State, Prefix + "/bin");
 #endif
 }
 
@@ -92,12 +99,13 @@ void InstallLibraryDirectory::DisplayUserHelp(Script &State, HelpItemCollector &
 void InstallLibraryDirectory::Respond(Script &State)
 {
 	String ProjectName = GetArgument(State, "Project");
+	ClearArguments(State);
 
 	std::pair<bool, String> OverrideLibrary = FindConfiguration(GetIdentifier());
 	if (OverrideLibrary.first)
 	{
-		State.PushString(OverrideLibrary.second);
-		State.PutElement("Location");
+		if (Verbose) StandardStream << "Found " << GetIdentifier() << " for project \"" << ProjectName << "\" by configuration.\n" << OutputStream::Flush();
+		ReturnLocation(State, OverrideLibrary.second);
 		return;
 	}
 
@@ -106,8 +114,7 @@ void InstallLibraryDirectory::Respond(Script &State)
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		State.PushString(OverridePrefix.second + "/bin");
-		State.PutElement("Location");
+		ReturnLocation(State, OverridePrefix.second + "/bin");
 		return;
 	}
 	DumpProjectInstallDirectory(Script, ProjectName);
@@ -127,8 +134,7 @@ void InstallLibraryDirectory::Respond(Script &State)
 		if (PlatformInformation->GetArchitectureBits() == 64) Out << "/lib64";
 		else Out << "/lib";
 	}
-	State.PushString(Out);
-	State.PutElement("Location");
+	ReturnLocation(State, Out);
 #endif
 }
 
@@ -152,11 +158,13 @@ void InstallDataDirectory::DisplayUserHelp(Script &State, HelpItemCollector &Hel
 void InstallDataDirectory::Respond(Script &State)
 {
 	String ProjectName = GetArgument(State, "Project");
+	ClearArguments(State);
+
 	std::pair<bool, String> OverrideData = FindConfiguration(GetIdentifier());
 	if (OverrideData.first)
 	{
-		State.PushString(OverrideData.second);
-		State.PutElement("Location");
+		if (Verbose) StandardStream << "Found " << GetIdentifier() << " for project \"" << ProjectName << "\" by configuration.\n" << OutputStream::Flush();
+		ReturnLocation(State, OverrideData.second);
 		return;
 	}
 
@@ -165,16 +173,14 @@ void InstallDataDirectory::Respond(Script &State)
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		State.PushString(OverridePrefix.second + "/share/" + ProjectName);
-		State.PutElement("Location");
+		ReturnLocation(State, OverridePrefix.second + "/share/" + ProjectName);
 		return;
 	}
 	DumpProjectInstallDirectory(Out, ProjectName);
 #else
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;
-	State.PushString(Prefix + "/share/" + ProjectName);
-	State.PutElement("Location");
+	ReturnLocation(State, Prefix + "/share/" + ProjectName);
 #endif
 }
 
@@ -198,19 +204,20 @@ void InstallGlobalConfigDirectory::DisplayUserHelp(Script &State, HelpItemCollec
 void InstallGlobalConfigDirectory::Respond(Script &State)
 {
 	String ProjectName = GetArgument(State, "Project");
+	ClearArguments(State);
+
 	std::pair<bool, String> OverrideConfig = FindConfiguration(GetIdentifier());
 	if (OverrideConfig.first)
 	{
-		State.PushString(OverrideConfig.second);
-		State.PutElement("Location");
+		if (Verbose) StandardStream << "Found " << GetIdentifier() << " for project \"" << ProjectName << "\" by configuration.\n" << OutputStream::Flush();
+		ReturnLocation(State, OverrideConfig.second);
 		return;
 	}
 
 	std::pair<bool, String> OverridePrefix = FindConfiguration("prefix");
 	if (OverridePrefix.first)
 	{
-		State.PushString(OverridePrefix.second + "/etc/" + ProjectName);
-		State.PutElement("Location");
+		ReturnLocation(State, OverridePrefix.second + "/etc/" + ProjectName);
 		return;
 	}
 #ifdef WINDOWS
@@ -218,11 +225,9 @@ void InstallGlobalConfigDirectory::Respond(Script &State)
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't find global config directory!  Received error " + AsString(Result));
-	State.PushString(AsString(PathResult));
-	State.PutElement("Location");
+	ReturnLocation(State, AsString(PathResult));
 #else
-	State.PushString("/usr/etc");
-	State.PutElement("Location");
+	ReturnLocation(State, "/usr/etc");
 #endif
 }
 

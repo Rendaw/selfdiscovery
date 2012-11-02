@@ -11,7 +11,7 @@ String CLibrary::GetIdentifier(void) { return "CLibrary"; }
 
 void CLibrary::DisplayControllerHelp()
 {
-	StandardStream << "\tSelfDiscovery." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
 		"\tReturns: {Filename = FILENAME, LibraryDirectory = LIBRARYDIR, IncludeDirectory = INCLUDEDIR}\n"
 		"\tLocates and returns information about C library NAME.  FLAGS can be any number of the following boolean flags: Optional, Static.  If Optional is not specified, the configuration will abort if the library is not found.  If Optional is specified and the library is not found, no response will be returned.  If Static is specified, a static library will be located instead of a dynamic library.  FILENAME is the name of the library file.  INCLUDEDIR will contain the location of headers associated with the library.  LIBRARYDIR will contain the location of the library itself.\n"
 		"\n";
@@ -22,7 +22,7 @@ void CLibrary::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 	String LibraryName = GetArgument(State, "Name");
 	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "=LOCATION",
 		MemoryStream() << "Overrides the location of library " << LibraryName << ".  This path should include both the absolute directory and the filename.  Unless the include location is separately overridden, the include path will be deduced from LOCATION.");
-	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".");
+	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-Includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".");
 }
 
 static std::vector<DirectoryPath> SplitEnvironmentVariableParts(String const &Raw)
@@ -107,16 +107,23 @@ CLibrary::CLibrary(void) : TestLocations(GatherTestLocations())
 		StandardStream << "Checking the following directories for libraries:\n";
 		for (auto &Location : TestLocations)
 			StandardStream << "\t" << Location << "\n";
+		StandardStream << OutputStream::Flush();
 	}
 }
 
 void CLibrary::Respond(Script &State)
 {
 	String LibraryName = GetArgument(State, "Name");
-	std::pair<bool, String> OverrideLibrary = FindConfiguration(GetIdentifier() + "-" + LibraryName),
-		OverrideIncludes = FindConfiguration(GetIdentifier() + "-" + LibraryName + "-includes");
+	bool RequireStatic = GetFlag(State, "Static");
+	bool Optional = GetFlag(State, "Optional");
+	ClearArguments(State);
 
-	if (Verbose && !OverrideLibrary.first) StandardStream << "Override location for library " << LibraryName << " not specified with flag: " << GetIdentifier() + "-" + LibraryName << ", proceeding with normal discovery." << "\n" << OutputStream::Flush();
+	State.PushTable();
+
+	std::pair<bool, String> OverrideLibrary = FindConfiguration(GetIdentifier() + "-" + LibraryName),
+		OverrideIncludes = FindConfiguration(GetIdentifier() + "-" + LibraryName + "-Includes");
+
+	if (Verbose && !OverrideLibrary.first) StandardStream << "Override location for library \"" << LibraryName << "\" not specified with flag \"" << GetIdentifier() + "-" + LibraryName << "\"; proceeding with normal discovery." << "\n" << OutputStream::Flush();
 
 	auto WriteIncludeLocation = [&](FilePath const &LibraryPath)
 	{
@@ -142,22 +149,29 @@ void CLibrary::Respond(Script &State)
 	if (OverrideLibrary.first)
 	{
 		// Try override values
-		FilePath OverrideLibraryPath = OverrideLibrary.second;
-		if (Verbose) StandardStream << "Testing for library " << LibraryName << " at " << OverrideLibraryPath << "\n" << OutputStream::Flush();
-		if (!OverrideLibraryPath.Exists())
-			throw InteractionError("The location of library " + LibraryName + " was manually specified but the file does not exist at that location.");
-		State.PushString(OverrideLibraryPath.File());
-		State.PutElement("Filename");
-		State.PushString(OverrideLibraryPath.Directory());
-		State.PutElement("LibraryDirectory");
-		WriteIncludeLocation(OverrideLibraryPath);
+		try
+		{
+			FilePath OverrideLibraryPath = FilePath::Qualify(OverrideLibrary.second);
+			if (Verbose) StandardStream << "Testing for library \"" << LibraryName << "\" at \"" << OverrideLibraryPath << "\"\n" << OutputStream::Flush();
+			if (!OverrideLibraryPath.Exists())
+				throw InteractionError("The location of library \"" + LibraryName + "\" was manually specified but the file does not exist at that location.");
+			State.PushString(OverrideLibraryPath.File());
+			State.PutElement("Filename");
+			State.PushString(OverrideLibraryPath.Directory());
+			State.PutElement("LibraryDirectory");
+			WriteIncludeLocation(OverrideLibraryPath);
+		}
+		catch (Error::Construction &Failure)
+		{
+			throw InteractionError("The location of library \"" + LibraryName + "\" was manually specified but rejected because: " + Failure.Explanation);
+		}
 		return;
 	}
 	else
 	{
 		auto ProcessLibraryLocation = [&](FilePath const &Location) -> bool
 		{
-			if (Verbose) StandardStream << "Testing for library " << LibraryName << " at " << Location << "\n" << OutputStream::Flush();
+			if (Verbose) StandardStream << "Testing for library \"" << LibraryName << "\" at \"" << Location << "\"\n" << OutputStream::Flush();
 			if (!Location.Exists()) return false;
 			State.PushString(Location.File());
 			State.PutElement("Filename");
@@ -173,13 +187,13 @@ void CLibrary::Respond(Script &State)
 
 			if (PlatformInformation->GetFamily() == Platform::Families::Windows)
 			{
-				if (GetFlag(State, "Static"))
+				if (RequireStatic)
 					{ if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".lib"))) return; }
 				else if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".dll"))) return;
 			}
 			else
 			{
-				if (GetFlag(State, "Static"))
+				if (RequireStatic)
 				{
 					if (ProcessLibraryLocation(TestLocation.Select("lib" + LibraryName + ".a"))) return;
 					if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".a"))) return;
@@ -193,7 +207,7 @@ void CLibrary::Respond(Script &State)
 		}
 	}
 
-	if (!GetFlag(State, "Optional"))
+	if (!Optional)
 		throw InteractionError("Could not find required library " + LibraryName + ".  If you believe you have the library, check the help and specify the correct location on the command line.");
 }
 

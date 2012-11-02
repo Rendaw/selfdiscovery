@@ -7,7 +7,7 @@
 
 extern bool Verbose;
 
-String Program::GetIdentifier(void) { return "program"; }
+String Program::GetIdentifier(void) { return "Program"; }
 
 void Program::DisplayControllerHelp(void)
 {
@@ -44,7 +44,7 @@ Program::Program(void) : Paths(GetPathParts())
 {
 	if (Verbose)
 	{
-		std::cout << "Directories checked when searching for installed programs:\n";
+		std::cout << "The following directories will be checked when searching for installed programs:\n";
 		for (auto &Path : Paths)
 			std::cout << "\t" << Path << "\n";
 	}
@@ -54,10 +54,23 @@ void Program::Respond(Script &State)
 {
 	String ProgramName = GetArgument(State, "Name");
 
+
+	std::pair<bool, String> Override = FindConfiguration(GetIdentifier() + "-" + ProgramName);
+	if (Override.first)
+	{
+		if (Verbose)
+			StandardStream << "Found program \"" + ProgramName + "\" by configuration.\n";
+		State.PushTable();
+		State.PushString(Override.second);
+		State.PutElement("Location");
+		return;
+	}
+
 	FilePath *Found = FindProgram(ProgramName);
 	if ((Found == nullptr) && !GetFlag(State, "Optional"))
-		throw InteractionError("Failed to find required program " + ProgramName);
+		throw InteractionError("Failed to find required program \"" + ProgramName + "\"");
 	
+	State.PushTable();
 	if (Found != nullptr) 
 	{
 		State.PushString(Found->AsAbsoluteString());
@@ -78,7 +91,7 @@ FilePath *Program::FindProgram(String const &ProgramName)
 			FilePath OverridePath(FilePath::Qualify(OverrideProgram.second));
 			if (OverridePath.Exists())
 			{
-				if (Verbose) std::cout << "Found program " << ProgramName << " at user-specified location " << OverridePath << std::endl;
+				if (Verbose) std::cout << "Found program \"" << ProgramName << "\" at user-specified location " << OverridePath << std::endl;
 				Programs[ProgramName] = new FilePath(OverridePath);
 			}
 		}
@@ -90,7 +103,7 @@ FilePath *Program::FindProgram(String const &ProgramName)
 				FilePath NextFilePath = NextPath.Select(ProgramName);
 				if (NextFilePath.Exists())
 				{
-					if (Verbose) std::cout << "Found program " << ProgramName << " at " << NextFilePath << std::endl;
+					if (Verbose) StandardStream << "Found program \"" << ProgramName << "\" at \"" << NextFilePath << "\".\n" << OutputStream::Flush();
 					Programs[ProgramName] = new FilePath(NextFilePath);
 					break;
 				}

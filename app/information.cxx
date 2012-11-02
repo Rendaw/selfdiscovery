@@ -2,6 +2,7 @@
 
 String GetArgument(Script &State, String const &Name)
 {
+	State.AssertTable("Arguments must be passed to this function in a table.  It appears that you passed in a " + State.GetType() + ".");
 	State.PullElement(Name);
 	State.AssertString("Invalid or missing required string parameter \"" + Name + "\".");
 	String Out = State.GetString();
@@ -12,6 +13,7 @@ String GetArgument(Script &State, String const &Name)
 
 String GetOptionalArgument(Script &State, String const &Name)
 {
+	State.AssertTable("Arguments must be passed to this function in a table.  It appears that you passed in a " + State.GetType() + ".");
 	if (!State.TryElement(Name))
 		return String();
 	State.AssertString("Argument " + Name + " must be a string.");
@@ -20,10 +22,18 @@ String GetOptionalArgument(Script &State, String const &Name)
 
 bool GetFlag(Script &State, String const &Name)
 {
+	State.AssertTable("Arguments must be passed to this function in a table.  It appears that you passed in a " + State.GetType() + ".");
 	if (!State.TryElement(Name))
 		return false;
 	State.AssertBoolean("Flag " + Name + " must be a boolean.");
 	return State.GetBoolean();
+}
+
+void ClearArguments(Script &State)
+{
+	assert(State.IsTable());
+	State.Pop();
+	assert(State.Height() == 0);
 }
 		
 void HelpItemCollector::Add(String const &Argument, String const &NewDescription)

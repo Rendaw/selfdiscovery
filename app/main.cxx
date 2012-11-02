@@ -35,35 +35,50 @@ Information::AnchorImplementation<Program> ProgramInformation;
 Information::AnchorImplementation<CXXCompiler> CXXCompilerInformation;
 Information::AnchorImplementation<CLibrary> CLibraryInformation;
 
+std::vector<const char *> HelpNames = {"Help", "--help", "-h", "ControllerHelp"};
+
+std::vector<FilePath> ConfigurationFilePaths = {
+	LocateGlobalConfigFile("selfdiscovery.config"),
+	LocateUserConfigFile("selfdiscovery.config"),
+	LocateWorkingDirectory().Select("selfdiscovery.config")};
+
 int main(int argc, char **argv)
 {
 	try 
 	{
 		// Determine the controller
-		if (argc < 2) throw InteractionError("A controller program must be specified as the first argument.");
-		String ControllerName = argv[1];
+		String ControllerName;
+		if (argc >= 2) 
+			ControllerName = argv[1];
+
+		for (auto &HelpName : HelpNames)
+			if (ControllerName == HelpName)
+			{
+				LoadConfigurationCommandline(ControllerName);
+				ControllerName = String();
+				break;
+			}
 
 		// Get configuration/overrides, prioritize closer stuff (commandline, user files) over more distant stuff (global config files)
-		LoadConfigurationFile(LocateGlobalConfigFile("selfdiscovery.config"));
-		LoadConfigurationFile(LocateUserConfigFile("selfdiscovery.config"));
-		LoadConfigurationFile(LocateWorkingDirectory().Select("selfdiscovery.config"));
+		for (auto &ConfigurationFilePath : ConfigurationFilePaths)
+			LoadConfigurationFile(ConfigurationFilePath);
 		
 		for (unsigned int CurrentArgumentIndex = 2; CurrentArgumentIndex < (unsigned int)argc; CurrentArgumentIndex++)
 			LoadConfigurationCommandline(argv[CurrentArgumentIndex]);
 		
-		if (FindConfiguration("help").first || FindConfiguration("--help").first || FindConfiguration("-h").first) RunMode = RunModes::Help;
-		if (FindConfiguration("controllerhelp").first) RunMode = RunModes::ControllerHelp;
-		if (FindConfiguration("verbose").first) Verbose = true;
+		if (FindConfiguration("Help").first || FindConfiguration("--help").first || FindConfiguration("-h").first) RunMode = RunModes::Help;
+		if (FindConfiguration("ControllerHelp").first) RunMode = RunModes::ControllerHelp;
+		if (FindConfiguration("Verbose").first) Verbose = true;
 
 		if (Verbose)
 		{
 			for (auto ConfigurationElement : GetProgramConfiguration())
-				StandardStream << "Configuration setting: \'" << ConfigurationElement.first << "\' = \'" << ConfigurationElement.second.Value << "\', from " << ConfigurationElement.second.Source << "\n" << OutputStream::Flush();
+				StandardStream << "Read configuration setting \'" << ConfigurationElement.first << "\' ( = \'" << ConfigurationElement.second.Value << "\') from " << ConfigurationElement.second.Source << ".\n" << OutputStream::Flush();
 
 		}
 
 		// Prepare a list of information items for next operations
-		DeleterList<Information::Anchor> InformationItems({
+		std::list<Information::Anchor *> InformationItems({
 			&VersionInformation,
 			&FlagInformation,
 			&PlatformInformation,
@@ -78,7 +93,8 @@ int main(int argc, char **argv)
 		// Display controller help and exit early if that flag was set
 		if (RunMode == RunModes::ControllerHelp)
 		{
-			StandardStream << "\tA controller is a lua program that makes requests for information and processes the returned information.  The controller filename must be specified as the first argument to the program.  If you specify \"--\" instead of a filename, an interactive lua shell will be opened instead.\n"
+			StandardStream << "\tA controller is a lua program that makes requests for information and processes the returned information.  The controller filename must be specified as the first argument to the program.\n"
+				"\tIf the controller is invoked in help mode, all information queries will return nil and the controller should refrain from changing the system state.  The controller can check for help mode using Discover.HelpMode(), which returns true if help mode is active and false otherwise.\n"
 				"\tThe following information queries can be made by the controller:\n\n";
 			for (auto &InformationItem : InformationItems)
 				InformationItem->DisplayControllerHelp();
@@ -87,16 +103,38 @@ int main(int argc, char **argv)
 
 		if (RunMode == RunModes::Help)
 		{
-			StandardStream << "\tThis program gathers information about your system for a controller script.  Generally, this is used by software build scripts to configure themselves for your system.  This program takes one argument, the controller.  The controller controls which information should be gathered.\n"
-				"\tIf this program cannot find required information or finds the incorrect information, you can override it by specifying an override on the command line or by putting the flag in a configuration file in a standard location.\n"
-				"\tThe override file must be one of " << LocateGlobalConfigFile("selfdiscovery.config") << ", " << LocateUserConfigFile("selfdiscovery.config") << ", or " << LocateWorkingDirectory().Select("selfdiscovery.config") << ", ordered by increasing priority.  In the configuration files, only one override may be placed on a line.\n"
-				"\tThe overrides should be specified in the form of \"overridename\" or \"overridename=value\".  Quotes and backslashes can be used to escape syntactic characters and group spaced words.  The following overrides are supported:\n"
+			StandardStream << 
+				"selfdiscovery CONFIGURATION...\n"
+				"selfdiscovery CONTROLLER CONFIGURATION...\n"
+				"\n"
+				"\tThis program gathers information about your system for a controller script.  Generally, this is used by software build scripts to configure themselves for your system.  The controller script filename is specified by CONTROLLER.  The controller tells this program which information it should gather.\n"
+				"\tCONFIGURATION... can be any number of the following values: Help, ControllerHelp, Verbose.  Help displays this message.  ControllerHelp displays documentation for writing controller scripts.  Verbose displays messages while discovery is in progress that are intended to clarify how and what information is being found.  If you specify CONTROLLER as well as Help, additional flags that can be used to override or guide information discovery will be listed below.\n"
+				"\tAny values you can specify in CONFIGURATION... can also be placed in configuration files that will be automatically loaded.  Only one value may be specified per line.  The values loaded from the configuration files will supplement the CONFIGURATION... specified in the command line, but have lower precedence than the command line values.  The configuration files automatically loaded are, by increasing precedence: \n";
+			for (auto &ConfigurationFilePath : ConfigurationFilePaths)
+				StandardStream << "\t" << ConfigurationFilePath << "\n";
+			StandardStream <<
+				"\n"
+				"\tExamples:\n"
+				"selfdiscovery Help\n"
+				"selfdiscovery ControllerHelp\n"
+				"selfdiscovery example.lua Help\n"
+				"selfdiscovery example.lua\n"
+				"selfdiscovery example.lua Verbose Path=\"/usr/local/bin\"\n"
 				"\n";
+			if (!ControllerName.empty())
+				StandardStream << "\tAdditional CONFIGURATION... values relevant to this controller:\n\n";
 		}
 
 		// Prepare and run the controller
 		Script ControlScript;
 		ControlScript.PushTable();
+		ControlScript.PushFunction([&RunMode](Script &State)
+		{
+			if (RunMode == RunModes::Help) State.PushBoolean(true);
+			else State.PushBoolean(false);
+			return 1;
+		});
+		ControlScript.PutElement("HelpMode");
 
 		HelpItemCollector HelpItems;
 			
@@ -108,14 +146,10 @@ int main(int argc, char **argv)
 			ControlScript.PutElement(InformationItem->GetIdentifier());
 		}
 
-		ControlScript.SaveGlobal("SelfDiscovery");
+		ControlScript.SaveGlobal("Discover");
 
-		if (ControllerName != "--")
+		if (!ControllerName.empty())
 			ControlScript.Do(ControllerName, Verbose);
-		else
-		{
-			assert(0); // TODO
-		}
 
 		if (RunMode == RunModes::Help)
 		{
@@ -123,7 +157,7 @@ int main(int argc, char **argv)
 			{
 				StandardStream << "\t" << HelpItem.first << "\n";
 				for (auto &Description : HelpItem.second)
-			       		StandardStream << Description << "\n";
+			       		StandardStream << "\t" << Description << "\n";
 				StandardStream << "\n";
 			}
 		}

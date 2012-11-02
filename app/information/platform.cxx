@@ -36,7 +36,10 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 {
 	std::pair<bool, String> OverrideArchitecture = FindConfiguration("Arch");
 	if (OverrideArchitecture.first)
+	{
+		if (Verbose) StandardStream << "Found platform architecture by configuration.\n" << OutputStream::Flush();
 		MemoryStream(OverrideArchitecture.second) >> ArchitectureBits;
+	}
 
 	std::pair<bool, String> OverrideFamily = FindConfiguration("PlatformFamily"),
 		OverrideMember = FindConfiguration("PlatformMember");
@@ -89,13 +92,17 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 #else
 	// Linux
 	Family = Families::Linux;
-	FileInput LSBRelease(AsNativeString(FilePath("/etc/lsb-release")));
-	String LSBReleaseLine;
-	while (LSBRelease >> LSBReleaseLine)
+	try
 	{
-		if (LSBReleaseLine.find("Ubuntu")) Member = Members::LinuxUbuntu;
-		else if (LSBReleaseLine.find("Debian")) Member = Members::LinuxDebian;
+		FileInput LSBRelease(AsNativeString(FilePath("/etc/lsb-release")));
+		String LSBReleaseLine;
+		while (LSBRelease >> LSBReleaseLine)
+		{
+			if (LSBReleaseLine.find("Ubuntu")) Member = Members::LinuxUbuntu;
+			else if (LSBReleaseLine.find("Debian")) Member = Members::LinuxDebian;
+		}
 	}
+	catch (...) {}
 
 	if (!Member.empty()) {}
 	else if (FilePath("/etc/arch-release").Exists())
@@ -103,8 +110,16 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 		Member = Members::LinuxArch;
 	}
 #endif
-	if (OverrideFamily.first) Family = OverrideFamily.second;
-	if (OverrideMember.first) Member = OverrideMember.second;
+	if (OverrideFamily.first) 
+	{
+		Family = OverrideFamily.second;
+		if (Verbose) StandardStream << "Found platform family by configuration.\n" << OutputStream::Flush();
+	}
+	if (OverrideMember.first) 
+	{
+		Member = OverrideMember.second;
+		if (Verbose) StandardStream << "Found platform member by configuration.\n" << OutputStream::Flush();
+	}
 	if (Family == Families::Linux)
 	{
 		if (Member == Members::LinuxUbuntu) LinuxClass = LinuxClasses::Debian;
@@ -113,10 +128,10 @@ Platform::Platform(void) : Family(Families::Linux), Member(Members::Unknown), Ar
 	}
 	assert(!Family.empty());
 	if (Verbose)
-		std::cout << "Determined platform: " << Family << ", " << Member << ", " << ArchitectureBits << "-bit" << std::endl;
+		std::cout << "Determined platform family " << Family << ", member " << Member << ", architecture " << ArchitectureBits << "-bit" << std::endl;
 }
 
-String Platform::GetIdentifier(void) { return "platform"; }
+String Platform::GetIdentifier(void) { return "Platform"; }
 
 static String PrintEnumerations(void)
 {
@@ -131,22 +146,22 @@ void Platform::DisplayControllerHelp(void)
 {
 	StandardStream << "\tDiscover." << GetIdentifier() << "{}\n"
 		"\tResult: {Family = FAMILY, Member = MEMBER, Arch = ARCH}\n"
-		"\tDetermines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  ARCH is the maximum bit depth for memory addresses on the system, such as 32 or 64.\n";
+		"\tDetermines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  ARCH is the maximum bit depth for memory addresses on the system.\n";
 	StandardStream << PrintEnumerations();
-	StandardStream << "\tarch=32|64\n"
-		"Overrides the detected architecture.  This may also affect installation directories and the like.\n"
+	StandardStream << "\tArch=32|64\n"
 		"\n";
 }
 
 void Platform::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
 	HelpItems.Add("PlatformFamily=FAMILY", "Overrides the detected platform family with FAMILY.");
-	HelpItems.Add("PlatformMember=MEMBER", "Overrides the detected platform family and member with FAMILY and MEMBER." + PrintEnumerations());
+	HelpItems.Add("PlatformMember=MEMBER", "Overrides the detected platform family and member with FAMILY and MEMBER.\n" + PrintEnumerations());
 	HelpItems.Add("Arch=32|64", "Overrides the detected architecture.  This may also affect installation directories and the like.");
 }
 
 void Platform::Respond(Script &State)
 {
+	State.PushTable();
 	State.PushString(Family);
 	State.PutElement("Family");
 	State.PushString(Member);

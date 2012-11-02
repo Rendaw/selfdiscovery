@@ -14,6 +14,7 @@
 String GetArgument(Script &State, String const &Name); // Throws Error::Input if missing or empty
 String GetOptionalArgument(Script &State, String const &Name); // Returns empty string if missing
 bool GetFlag(Script &State, String const &Name);
+void ClearArguments(Script &State);
 
 class HelpItemCollector : public std::map<String, Set<String> >
 {
@@ -41,7 +42,7 @@ namespace Information
 	{
 		public:
 			AnchorImplementation(void) : AnchoredItem(nullptr) {}
-			~AnchorImplementation(void) { delete AnchoredItem; }
+			~AnchorImplementation(void) override { delete AnchoredItem; }
 			
 			String GetIdentifier(void) { return ItemClass::GetIdentifier(); }
 			
@@ -64,8 +65,8 @@ namespace Information
 					if (AnchoredItem == nullptr) AnchoredItem = new ItemClass;
 					try 
 					{
-						State.PushTable();
 						AnchoredItem->Respond(State);
+						assert(State.IsTable());
 						if (State.IsEmpty())
 						{
 							State.Pop();

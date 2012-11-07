@@ -110,7 +110,7 @@ void CXXCompiler::Respond(Script &State)
 	};
 
 	std::pair<bool, String> OverrideCompiler = FindConfiguration(GetIdentifier());
-	if ((OverrideCompiler.first) && (TestCompiler(FilePath::Qualify(OverrideCompiler.second))))
+	if (OverrideCompiler.first && TestCompiler(FilePath::Qualify(OverrideCompiler.second)))
 		return;
 	
 	for (auto &ProgramName : std::vector<String>({Compilers::GXX, Compilers::Clang, Compilers::CLEXE}))

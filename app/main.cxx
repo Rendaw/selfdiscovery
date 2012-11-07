@@ -11,6 +11,7 @@
 
 #include "shared.h"
 #include "configuration.h"
+#include "shellutility.h"
 
 // Global information and information types - used in main loop and in individual info types and such
 enum RunModes { Normal, Help, ControllerHelp } RunMode = Normal;
@@ -69,6 +70,7 @@ int main(int argc, char **argv)
 		if (FindConfiguration("Help").first || FindConfiguration("--help").first || FindConfiguration("-h").first) RunMode = RunModes::Help;
 		if (FindConfiguration("ControllerHelp").first) RunMode = RunModes::ControllerHelp;
 		if (FindConfiguration("Verbose").first) Verbose = true;
+		if (ControllerName.empty() && (RunMode == RunModes::Normal)) RunMode = RunModes::Help;
 
 		if (Verbose)
 		{
@@ -95,6 +97,9 @@ int main(int argc, char **argv)
 		{
 			StandardStream << "\tA controller is a lua program that makes requests for information and processes the returned information.  The controller filename must be specified as the first argument to the program.\n"
 				"\tIf the controller is invoked in help mode, all information queries will return nil and the controller should refrain from changing the system state.  The controller can check for help mode using Discover.HelpMode(), which returns true if help mode is active and false otherwise.\n"
+				"\tThe following shell-style utility methods are provided to ease scripting:\n\n";
+			ShowShellUtilityHelp();
+			StandardStream <<
 				"\tThe following information queries can be made by the controller:\n\n";
 			for (auto &InformationItem : InformationItems)
 				InformationItem->DisplayControllerHelp();
@@ -104,8 +109,8 @@ int main(int argc, char **argv)
 		if (RunMode == RunModes::Help)
 		{
 			StandardStream << 
-				"selfdiscovery CONFIGURATION...\n"
-				"selfdiscovery CONTROLLER CONFIGURATION...\n"
+				"\tselfdiscovery CONFIGURATION...\n"
+				"\tselfdiscovery CONTROLLER CONFIGURATION...\n"
 				"\n"
 				"\tThis program gathers information about your system for a controller script.  Generally, this is used by software build scripts to configure themselves for your system.  The controller script filename is specified by CONTROLLER.  The controller tells this program which information it should gather.\n"
 				"\tCONFIGURATION... can be any number of the following values: Help, ControllerHelp, Verbose.  Help displays this message.  ControllerHelp displays documentation for writing controller scripts.  Verbose displays messages while discovery is in progress that are intended to clarify how and what information is being found.  If you specify CONTROLLER as well as Help, additional flags that can be used to override or guide information discovery will be listed below.\n"
@@ -115,11 +120,11 @@ int main(int argc, char **argv)
 			StandardStream <<
 				"\n"
 				"\tExamples:\n"
-				"selfdiscovery Help\n"
-				"selfdiscovery ControllerHelp\n"
-				"selfdiscovery example.lua Help\n"
-				"selfdiscovery example.lua\n"
-				"selfdiscovery example.lua Verbose Path=\"/usr/local/bin\"\n"
+				"\tselfdiscovery Help\n"
+				"\tselfdiscovery ControllerHelp\n"
+				"\tselfdiscovery example.lua Help\n"
+				"\tselfdiscovery example.lua\n"
+				"\tselfdiscovery example.lua Verbose Path=\"/usr/local/bin\"\n"
 				"\n";
 			if (!ControllerName.empty())
 				StandardStream << "\tAdditional CONFIGURATION... values relevant to this controller:\n\n";
@@ -127,6 +132,11 @@ int main(int argc, char **argv)
 
 		// Prepare and run the controller
 		Script ControlScript;
+
+		ControlScript.PushTable();
+		RegisterShellUtilities(ControlScript);
+		ControlScript.SaveGlobal("Utility");
+
 		ControlScript.PushTable();
 		ControlScript.PushFunction([&RunMode](Script &State)
 		{
@@ -135,6 +145,13 @@ int main(int argc, char **argv)
 			return 1;
 		});
 		ControlScript.PutElement("HelpMode");
+
+		ControlScript.PushFunction([&ControllerName](Script &State)
+		{
+			State.PushString(FilePath::Qualify(ControllerName).Directory());
+			return 1;
+		});
+		ControlScript.PutElement("ControllerLocation");
 
 		HelpItemCollector HelpItems;
 			

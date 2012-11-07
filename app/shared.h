@@ -23,7 +23,7 @@ class StringSplitter
 		bool Finished(void); // Open quotes or unused escape (at end of input)
 		std::queue<String> &Results(void);
 	private:
-		Set<char> const &Delimiters;
+		Set<char> const Delimiters;
 		bool DropBlanks;
 
 		bool HotSlash;

@@ -10,6 +10,7 @@ Sources =
 	'../information.cxx',
 	'../configuration.cxx',
 	'../subprocess.cxx',
+	'../shellutility.cxx',
 	'../information/version.cxx',
 	'../information/flag.cxx',
 	'../information/platform.cxx',

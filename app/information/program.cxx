@@ -44,9 +44,9 @@ Program::Program(void) : Paths(GetPathParts())
 {
 	if (Verbose)
 	{
-		std::cout << "The following directories will be checked when searching for installed programs:\n";
+		StandardStream << "The following directories will be checked when searching for installed programs:\n";
 		for (auto &Path : Paths)
-			std::cout << "\t" << Path << "\n";
+			StandardStream << "\t" << Path << "\n";
 	}
 }
 
@@ -91,7 +91,7 @@ FilePath *Program::FindProgram(String const &ProgramName)
 			FilePath OverridePath(FilePath::Qualify(OverrideProgram.second));
 			if (OverridePath.Exists())
 			{
-				if (Verbose) std::cout << "Found program \"" << ProgramName << "\" at user-specified location " << OverridePath << std::endl;
+				if (Verbose) StandardStream << "Found program \"" << ProgramName << "\" at user-specified location " << OverridePath << "\n" << OutputStream::Flush();
 				Programs[ProgramName] = new FilePath(OverridePath);
 			}
 		}

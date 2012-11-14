@@ -53,7 +53,11 @@ void RegisterShellUtilities(Script &State)
 		int Result = system(Command.c_str());
 		if (Result == -1)
 			throw Error::System("Internal error while trying to call command.");
+#ifdef WINDOWS
+		State.PushInteger(Result);
+#else
 		State.PushInteger(WEXITSTATUS(Result));
+#endif
 		
 		ChangeWorkingDirectory(InitialDirectory);
 		return 1;

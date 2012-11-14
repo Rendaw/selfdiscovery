@@ -21,7 +21,7 @@ static void DumpProjectInstallDirectory(Script &State, String const &Project)
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't locate executable installation directory!  Received error " + AsString(Result));
-	State.PushString(AsString(PathResult) << "\\" << Project);
+	State.PushString(AsString(PathResult) + "\\" + Project);
 	State.PutElement("Location");
 }
 #endif
@@ -68,10 +68,10 @@ void InstallExecutableDirectory::Respond(Script &State)
 #ifdef _WIN32
 	if (OverridePrefix.first)
 	{
-		ReturnLocation(State, OverridePrefix.second << "/bin");
+		ReturnLocation(State, OverridePrefix.second + "/bin");
 		return;
 	}
-	DumpProjectInstallDirectory(Script, ProjectName);
+	DumpProjectInstallDirectory(State, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
@@ -117,7 +117,7 @@ void InstallLibraryDirectory::Respond(Script &State)
 		ReturnLocation(State, OverridePrefix.second + "/bin");
 		return;
 	}
-	DumpProjectInstallDirectory(Script, ProjectName);
+	DumpProjectInstallDirectory(State, ProjectName);
 #else
 	assert(PlatformInformation->GetFamily() == Platform::Families::Linux);
 	String Prefix = "/usr";
@@ -176,7 +176,7 @@ void InstallDataDirectory::Respond(Script &State)
 		ReturnLocation(State, OverridePrefix.second + "/share/" + ProjectName);
 		return;
 	}
-	DumpProjectInstallDirectory(Out, ProjectName);
+	DumpProjectInstallDirectory(State, ProjectName);
 #else
 	String Prefix = "/usr";
 	if (OverridePrefix.first) Prefix = OverridePrefix.second;

@@ -8,7 +8,7 @@ end
 
 CompileFlags = '-std=gnu++11 -Wall -pedantic ' .. tup.getconfig('CFLAGS') .. ' -DINTREELUA -I' .. NormalizeSlashes(tup.getcwd()) .. '/app/lua/lua-5.2.0/src/'
 LinkFlags = '-Wall -pedantic'
-LinkLibraries = '-ldl'
+LinkLibraries = ''
 if tup.getconfig('DEBUG') == 'true'
 then
 	CompileFlags = CompileFlags .. ' -ggdb -O0'
@@ -19,6 +19,8 @@ end
 if tup.getconfig('PLATFORM') == 'windows'
 then
 	CompileFlags = CompileFlags .. ' -DWINDOWS'
+else
+	LinkLibraries = LinkLibraries .. '-ldl'
 end
 
 CommandPrefix = ''

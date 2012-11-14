@@ -124,14 +124,14 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	ChildStartupInformation.hStdInput = ChildInHandle;
 	ChildStartupInformation.dwFlags |= STARTF_USESTDHANDLES;	
  
-	StringStream ArgumentConcatenation; 
+	MemoryStream ArgumentConcatenation; 
 #ifdef __MINGW32__
 	ArgumentConcatenation << "-c";
 #else
 	ArgumentConcatenation << "/c";
 #endif
 	for (auto &Argument : Arguments) ArgumentConcatenation << " " << Argument;
-	NativeString NativeArguments = AsNativeString(ArgumentConcatenation.str());
+	NativeString NativeArguments = AsNativeString(ArgumentConcatenation);
 	std::vector<wchar_t> NativeArgumentsWritableBuffer;
 	NativeArgumentsWritableBuffer.resize(NativeArguments.length());
 	std::copy(NativeArguments.begin(), NativeArguments.end(), NativeArgumentsWritableBuffer.begin());
@@ -144,7 +144,7 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	const String ProcessName = "cmd.exe";
 #endif
 	bool Result = CreateProcessW(reinterpret_cast<wchar_t const *>(AsNativeString(ProcessName).c_str()), &NativeArgumentsWritableBuffer[0], nullptr, nullptr, true, 0, nullptr, nullptr, &ChildStartupInformation, &ChildStatus);
-	if (!Result) throw InteractionError("Failed to spawn child process with name '" + ProcessName + "' and arguments '" + ArgumentConcatenation.str() + ": error number " + AsString(GetLastError()));
+	if (!Result) throw InteractionError("Failed to spawn child process with name '" + ProcessName + "' and arguments '" + (String)ArgumentConcatenation + ": error number " + AsString(GetLastError()));
 	
 	CloseHandle(ChildStatus.hProcess);
 	CloseHandle(ChildStatus.hThread);

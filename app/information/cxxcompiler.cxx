@@ -35,9 +35,9 @@ static bool CompileExample(FilePath const &CompilerPath, String const &Example, 
 	Arguments.push_back(std::get<0>(TestFile).AsAbsoluteString());
 	Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
 	if (Verbose)
-		while (!Compiler.In.HasFailed())
-			StandardStream << "Compiler output: " << Compiler.In.ReadLine() << "\n" << OutputStream::Flush();
-	else Compiler.In.ReadToEnd();
+		while (!Compiler.Out.HasFailed())
+			StandardStream << "Compiler output: " << Compiler.Out.ReadLine() << "\n" << OutputStream::Flush();
+	else Compiler.Out.ReadToEnd();
 	std::get<0>(TestFile).Delete();
 	return Compiler.GetResult() == 0;
 }
@@ -82,8 +82,7 @@ void CXXCompiler::Respond(Script &State)
 			if (RequireCXX11)
 			{
 				if (Verbose) StandardStream << "Testing compiler for C++11 support.\n" << OutputStream::Flush();
-				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}) &&
-					!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++0x"}))
+				if (!CompileExample(Compiler, CXX11Example, {"-x", "c++", "-fsyntax-only", "-std=c++11"}))
 				{
 					if (Verbose) StandardStream << "Compiler doesn't seem to support C++11.\n" << OutputStream::Flush();
 					return false;

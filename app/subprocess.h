@@ -7,11 +7,11 @@
 #include "ren-general/string.h"
 #include "ren-general/filesystem.h"
 
-class SubprocessInStream
+class SubprocessOutStream
 {
 	public:
-		SubprocessInStream(void);
-		~SubprocessInStream(void);
+		SubprocessOutStream(void);
+		~SubprocessOutStream(void);
 		void Associate(int FileDescriptor);
 		String ReadLine(void);
 		bool HasFailed(void);
@@ -22,11 +22,11 @@ class SubprocessInStream
 		bool Failed;
 };
 
-class SubprocessOutStream
+class SubprocessInStream
 {
 	public:
-		SubprocessOutStream(void);
-		~SubprocessOutStream(void);
+		SubprocessInStream(void);
+		~SubprocessInStream(void);
 		void Associate(int FileDescriptor);
 		void Write(String const &Contents = String("\n"));
 	private:
@@ -37,8 +37,8 @@ class Subprocess
 {
 	public:
 		Subprocess(FilePath const &Execute, std::vector<String> const &Arguments);
-		SubprocessInStream In;
 		SubprocessOutStream Out;
+		SubprocessInStream In;
 		void Kill(void);
 		int GetResult(void);
 	private:

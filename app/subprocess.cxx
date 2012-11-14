@@ -13,18 +13,20 @@
 
 #include "shared.h"
 
-SubprocessInStream::SubprocessInStream(void) : FileDescriptor(-1), Failed(true) {}
+extern bool Verbose;
 
-SubprocessInStream::~SubprocessInStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
+SubprocessOutStream::SubprocessOutStream(void) : FileDescriptor(-1), Failed(true) {}
 
-void SubprocessInStream::Associate(int FileDescriptor)
+SubprocessOutStream::~SubprocessOutStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
+
+void SubprocessOutStream::Associate(int FileDescriptor)
 {
 	assert(this->FileDescriptor == -1);
 	this->FileDescriptor = FileDescriptor;
 	Failed = false;
 }
 
-String SubprocessInStream::ReadLine(void)
+String SubprocessOutStream::ReadLine(void)
 {
 	assert(!Failed);
 	String Out;
@@ -51,25 +53,25 @@ String SubprocessInStream::ReadLine(void)
 	return std::move(Out);
 }
 
-bool SubprocessInStream::HasFailed(void) { return Failed; }
+bool SubprocessOutStream::HasFailed(void) { return Failed; }
 		
-void SubprocessInStream::ReadToEnd(void)
+void SubprocessOutStream::ReadToEnd(void)
 {
 	while (!HasFailed())
 		ReadLine();
 }
 
-SubprocessOutStream::SubprocessOutStream(void) : FileDescriptor(-1) {}
+SubprocessInStream::SubprocessInStream(void) : FileDescriptor(-1) {}
 
-SubprocessOutStream::~SubprocessOutStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
+SubprocessInStream::~SubprocessInStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
 
-void SubprocessOutStream::Associate(int FileDescriptor)
+void SubprocessInStream::Associate(int FileDescriptor)
 {
 	assert(this->FileDescriptor == -1);
 	this->FileDescriptor = FileDescriptor;
 }
 
-void SubprocessOutStream::Write(String const &Contents)
+void SubprocessInStream::Write(String const &Contents)
 {
 	struct WriteError : public InteractionError
 	{
@@ -85,6 +87,12 @@ void SubprocessOutStream::Write(String const &Contents)
 
 Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Arguments) : ResultRetrieved(false)
 {
+	if (Verbose)
+	{
+		StandardStream << "Running \"" << Execute << "\" with arguments: ";
+		for (auto &Argument : Arguments) StandardStream << Argument << " ";
+		StandardStream << "\n" << OutputStream::Flush();
+	}
 #ifdef WINDOWS
 	HANDLE ChildInHandle = NULL;
 	HANDLE ParentOutHandle = NULL;
@@ -147,8 +155,8 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	int ParentOut = _open_osfhandle((intptr_t)ParentOutHandle, _O_APPEND);
 	if (ParentOut == -1) throw InteractionError("Failed to get a file descriptor for parent write pipe.");
 	
-	In.Associate(ParentIn);
-	Out.Associate(ParentOut);
+	Out.Associate(ParentIn);
+	In.Associate(ParentOut);
 	
 #else
 	const unsigned int WriteEnd = 1, ReadEnd = 0;
@@ -171,15 +179,17 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 		FullRunLine << Execute.AsAbsoluteString();
 		for (auto &Argument : Arguments)
 			FullRunLine << " " << Argument;
-		exit(system(((String)FullRunLine).c_str()));
+		int RawResult = system(((String)FullRunLine).c_str());
+		if (RawResult == -1) exit(1);
+		exit(WEXITSTATUS(RawResult));
 	}
 	else // Parent side
 	{
 		close(ToChild[ReadEnd]);
-		Out.Associate(ToChild[WriteEnd]);
+		In.Associate(ToChild[WriteEnd]);
 
 		close(FromChild[WriteEnd]);
-		In.Associate(FromChild[ReadEnd]);
+		Out.Associate(FromChild[ReadEnd]);
 	}
 #endif
 }
@@ -204,12 +214,13 @@ int Subprocess::GetResult(void)
 			throw InteractionError("Lost control of child process, can't get return value: error code " + AsString(GetLastError()));
 		Result = ReturnCode;
 #else
-		int RawStatus;
+		int RawStatus = 1;
 		waitpid(ChildID, &RawStatus, 0);
 		if (!WIFEXITED(RawStatus))
 			return 1; // Some error, pretend like command failed
 		Result = WEXITSTATUS(RawStatus);
 #endif
+		if (Verbose) StandardStream << "Execution finished with code " << Result << ".\n" << OutputStream::Flush();
 		ResultRetrieved = true;
 	}
 	return Result;

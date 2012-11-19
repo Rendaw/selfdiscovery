@@ -20,12 +20,18 @@ namespace Compilers
 {
 	String const GXX("g++");
 	String const Clang("clang");
-	String const CLEXE("cl.exe");
+#ifdef WINDOWS
+	String const CLEXE("cl");
+#endif
 }
 
 String PrintCompilerClasses(void)
 {
-	return MemoryStream() << Compilers::GXX << ", " << Compilers::Clang << ", " << Compilers::CLEXE;
+	return MemoryStream() << Compilers::GXX << ", " << Compilers::Clang 
+#ifdef WINDOWS
+		<< ", " << Compilers::CLEXE
+#endif
+		;
 }
 
 static bool CompileExample(FilePath const &CompilerPath, String const &Example, std::vector<String> Arguments)
@@ -33,13 +39,21 @@ static bool CompileExample(FilePath const &CompilerPath, String const &Example, 
 	auto TestFile = CreateTemporaryFile(LocateTemporaryDirectory());
 	std::get<1>(TestFile) << Example << "\n" << OutputStream::Flush();
 	Arguments.push_back(std::get<0>(TestFile).AsAbsoluteString());
-	Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
-	if (Verbose)
-		while (!Compiler.Out.HasFailed())
-			StandardStream << "Compiler output: " << Compiler.Out.ReadLine() << "\n" << OutputStream::Flush();
-	else Compiler.Out.ReadToEnd();
-	std::get<0>(TestFile).Delete();
-	return Compiler.GetResult() == 0;
+	try
+	{
+		Subprocess Compiler(CompilerPath.AsAbsoluteString(), Arguments);
+		if (Verbose)
+			while (!Compiler.Out.HasFailed())
+				StandardStream << "Compiler output: " << Compiler.Out.ReadLine() << "\n" << OutputStream::Flush();
+		else Compiler.Out.ReadToEnd();
+		std::get<0>(TestFile).Delete();
+		return Compiler.GetResult() == 0;
+	}
+	catch (InteractionError &Failure)
+	{
+		std::get<0>(TestFile).Delete();
+		throw Failure;
+	}
 }
 
 String CXXCompiler::GetIdentifier(void) { return "CXXCompiler"; }
@@ -112,9 +126,21 @@ void CXXCompiler::Respond(Script &State)
 	if (OverrideCompiler.first && TestCompiler(FilePath::Qualify(OverrideCompiler.second)))
 		return;
 	
-	for (auto &ProgramName : std::vector<String>({Compilers::GXX, Compilers::Clang, Compilers::CLEXE}))
+	for (auto &ProgramName : std::vector<String>(
+		{
+			Compilers::GXX, 
+			Compilers::Clang, 
+#ifdef WINDOWS
+			Compilers::CLEXE,
+			"CL"
+#endif
+		}))
 	{
 		FilePath *FoundProgram = ProgramInformation->FindProgram(ProgramName);
+#ifdef WINDOWS
+		if (FoundProgram == nullptr) FoundProgram = ProgramInformation->FindProgram(ProgramName + ".exe");
+		if (FoundProgram == nullptr) FoundProgram = ProgramInformation->FindProgram(ProgramName + ".EXE");
+#endif
 		if ((FoundProgram != nullptr) && (TestCompiler(*FoundProgram)))
 			return;
 	}

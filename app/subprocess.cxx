@@ -22,6 +22,7 @@ SubprocessOutStream::~SubprocessOutStream(void) { if (FileDescriptor >= 0) close
 void SubprocessOutStream::Associate(int FileDescriptor)
 {
 	assert(this->FileDescriptor == -1);
+	assert(FileDescriptor != -1);
 	this->FileDescriptor = FileDescriptor;
 	Failed = false;
 }
@@ -36,7 +37,7 @@ String SubprocessOutStream::ReadLine(void)
 		int Result = read(FileDescriptor, &Buffer, 1);
 		if (Result == -1)
 		{
-			std::cerr << "Error: Couldn't read from controller due to error " << errno << ": " << strerror(errno) << std::endl;
+			std::cerr << "Error: Couldn't read from subprocess due to error " << errno << ": " << strerror(errno) << std::endl;
 			Failed = true;
 			return Out;
 		}
@@ -125,11 +126,6 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	ChildStartupInformation.dwFlags |= STARTF_USESTDHANDLES;	
  
 	MemoryStream ArgumentConcatenation; 
-#ifdef __MINGW32__
-	ArgumentConcatenation << "-c";
-#else
-	ArgumentConcatenation << "/c";
-#endif
 	for (auto &Argument : Arguments) ArgumentConcatenation << " " << Argument;
 	NativeString NativeArguments = AsNativeString(ArgumentConcatenation);
 	std::vector<wchar_t> NativeArgumentsWritableBuffer;
@@ -138,16 +134,12 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	
 	memset(&ChildStatus, 0, sizeof(PROCESS_INFORMATION));
 	
-#ifdef __MINGW32__
-	const String ProcessName = "sh.exe";
-#else
-	const String ProcessName = "cmd.exe";
-#endif
-	bool Result = CreateProcessW(reinterpret_cast<wchar_t const *>(AsNativeString(ProcessName).c_str()), &NativeArgumentsWritableBuffer[0], nullptr, nullptr, true, 0, nullptr, nullptr, &ChildStartupInformation, &ChildStatus);
-	if (!Result) throw InteractionError("Failed to spawn child process with name '" + ProcessName + "' and arguments '" + (String)ArgumentConcatenation + ": error number " + AsString(GetLastError()));
-	
-	CloseHandle(ChildStatus.hProcess);
+	bool Result = CreateProcessW(reinterpret_cast<wchar_t const *>(AsNativeString(Execute).c_str()), &NativeArgumentsWritableBuffer[0], nullptr, nullptr, true, 0, nullptr, nullptr, &ChildStartupInformation, &ChildStatus);
+	if (!Result) throw InteractionError("Failed to spawn child process with name '" + (String)Execute + "' and arguments '" + (String)ArgumentConcatenation + ": error number " + AsString(GetLastError()));
+
 	CloseHandle(ChildStatus.hThread);
+	CloseHandle(ChildOutHandle);
+	CloseHandle(ChildInHandle);
 	
 	int ParentIn = _open_osfhandle((intptr_t)ParentInHandle, _O_RDONLY);
 	if (ParentIn == -1) throw InteractionError("Failed to get a file descriptor for parent read pipe.");
@@ -157,7 +149,6 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	
 	Out.Associate(ParentIn);
 	In.Associate(ParentOut);
-	
 #else
 	const unsigned int WriteEnd = 1, ReadEnd = 0;
 	int FromChild[2], ToChild[2];
@@ -191,6 +182,13 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 		close(FromChild[WriteEnd]);
 		Out.Associate(FromChild[ReadEnd]);
 	}
+#endif
+}
+
+Subprocess::~Subprocess(void) 
+{
+#ifdef WINDOWS
+	CloseHandle(ChildStatus.hProcess);
 #endif
 }
 

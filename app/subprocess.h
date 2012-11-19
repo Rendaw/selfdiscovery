@@ -37,6 +37,7 @@ class Subprocess
 {
 	public:
 		Subprocess(FilePath const &Execute, std::vector<String> const &Arguments);
+		~Subprocess(void);
 		SubprocessOutStream Out;
 		SubprocessInStream In;
 		void Kill(void);

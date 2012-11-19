@@ -21,6 +21,7 @@ static void DumpProjectInstallDirectory(Script &State, String const &Project)
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't locate executable installation directory!  Received error " + AsString(Result));
+	State.PushTable();
 	State.PushString(AsString(PathResult) + "\\" + Project);
 	State.PutElement("Location");
 }

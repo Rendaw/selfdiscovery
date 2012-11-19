@@ -50,9 +50,15 @@ void RegisterShellUtilities(Script &State)
 			ChangeWorkingDirectory(DirectoryPath::Qualify(State.GetString()));
 		}
 
+#ifdef WINDOWS
+		int Result = _wsystem((wchar_t const *)AsNativeString(Command).c_str());
+#else
 		int Result = system(Command.c_str());
+
+		// For some reason on windows system always returns -1 even when it work.  If this changes, make this code shared
 		if (Result == -1)
-			throw Error::System("Internal error while trying to call command.");
+			throw Error::System(String("Internal error while trying to call command: ") + strerror(errno));
+#endif
 #ifdef WINDOWS
 		State.PushInteger(Result);
 #else

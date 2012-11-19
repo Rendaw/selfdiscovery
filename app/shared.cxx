@@ -22,7 +22,11 @@ StringSplitter &StringSplitter::Process(String const &Input)
 	String Buffer;
 	Buffer.reserve(1000);
 
+#ifdef WINDOWS
+	char const Slash = '^';
+#else
 	char const Slash = '\\';
+#endif
 	char const Quote = '"';
 	for (unsigned int CharacterIndex = 0; CharacterIndex < Input.length(); ++CharacterIndex)
 	{

@@ -91,7 +91,7 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	if (Verbose)
 	{
 		StandardStream << "Running \"" << Execute << "\" with arguments: ";
-		for (auto &Argument : Arguments) StandardStream << Argument << " ";
+		for (auto &Argument : Arguments) StandardStream << "\"" << Argument << "\" ";
 		StandardStream << "\n" << OutputStream::Flush();
 	}
 #ifdef WINDOWS
@@ -120,17 +120,20 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	STARTUPINFOW ChildStartupInformation;
 	memset(&ChildStartupInformation, 0, sizeof(STARTUPINFO));
 	ChildStartupInformation.cb = sizeof(STARTUPINFO); 
-	//ChildStartupInformation.hStdError = g_hChildStd_OUT_Wr;
 	ChildStartupInformation.hStdOutput = ChildOutHandle;
 	ChildStartupInformation.hStdInput = ChildInHandle;
+	if (Verbose)
+		ChildStartupInformation.hStdError = ChildOutHandle;
+		//ChildStartupInformation.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 	ChildStartupInformation.dwFlags |= STARTF_USESTDHANDLES;	
  
 	MemoryStream ArgumentConcatenation; 
-	for (auto &Argument : Arguments) ArgumentConcatenation << " " << Argument;
+	for (auto &Argument : Arguments) ArgumentConcatenation << " \"" << Argument << "\"";
 	NativeString NativeArguments = AsNativeString(ArgumentConcatenation);
 	std::vector<wchar_t> NativeArgumentsWritableBuffer;
-	NativeArgumentsWritableBuffer.resize(NativeArguments.length());
+	NativeArgumentsWritableBuffer.resize(NativeArguments.length() + 1);
 	std::copy(NativeArguments.begin(), NativeArguments.end(), NativeArgumentsWritableBuffer.begin());
+	NativeArgumentsWritableBuffer[NativeArguments.length()] = 0;
 	
 	memset(&ChildStatus, 0, sizeof(PROCESS_INFORMATION));
 	
@@ -207,7 +210,7 @@ int Subprocess::GetResult(void)
 	{
 #ifdef WINDOWS
 		WaitForSingleObject(ChildStatus.hProcess, 0);
-		DWORD ReturnCode;
+		DWORD ReturnCode = 0;
 		if (!GetExitCodeProcess(ChildStatus.hProcess, &ReturnCode))
 			throw InteractionError("Lost control of child process, can't get return value: error code " + AsString(GetLastError()));
 		Result = ReturnCode;

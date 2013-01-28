@@ -1,5 +1,7 @@
 #include "shellutility.h"
 
+#include <cstring>
+
 #include "ren-general/inputoutput.h"
 #include "ren-general/filesystem.h"
 

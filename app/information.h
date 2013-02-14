@@ -12,6 +12,7 @@
 #include "shared.h"
 
 String GetArgument(Script &State, String const &Name); // Throws Error::Input if missing or empty
+std::vector<String> GetVariableArgument(Script &State, String const &Name);
 String GetOptionalArgument(Script &State, String const &Name); // Returns empty string if missing
 bool GetFlag(Script &State, String const &Name);
 void ClearArguments(Script &State);

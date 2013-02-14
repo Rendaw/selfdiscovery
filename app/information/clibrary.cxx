@@ -11,7 +11,7 @@ String CLibrary::GetIdentifier(void) { return "CLibrary"; }
 
 void CLibrary::DisplayControllerHelp()
 {
-	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME | {NAME...}, FLAGS...}\n"
 		"\tReturns: {Filename = FILENAME, LibraryDirectory = LIBRARYDIR, IncludeDirectory = INCLUDEDIR}\n"
 		"\tLocates and returns information about C library NAME.  FLAGS can be any number of the following boolean flags: Optional, Static.  If Optional is not specified, the configuration will abort if the library is not found.  If Optional is specified and the library is not found, no response will be returned.  If Static is specified, a static library will be located instead of a dynamic library.  FILENAME is the name of the library file.  INCLUDEDIR will contain the location of headers associated with the library.  LIBRARYDIR will contain the location of the library itself.\n"
 		"\n";
@@ -113,10 +113,12 @@ CLibrary::CLibrary(void) : TestLocations(GatherTestLocations())
 
 void CLibrary::Respond(Script &State)
 {
-	String LibraryName = GetArgument(State, "Name");
+	std::vector<String> LibraryNames = GetVariableArgument(State, "Name");
 	bool RequireStatic = GetFlag(State, "Static");
 	bool Optional = GetFlag(State, "Optional");
 	ClearArguments(State);
+
+	String const LibraryName = LibraryNames[0];
 
 	State.PushTable();
 
@@ -181,27 +183,30 @@ void CLibrary::Respond(Script &State)
 			return true;
 		};
 
-		for (auto &TestLocation : TestLocations)
+		for (auto &TestName : LibraryNames)
 		{
-			if (ProcessLibraryLocation(TestLocation.Select(LibraryName))) return;
+			for (auto &TestLocation : TestLocations)
+			{
+				if (ProcessLibraryLocation(TestLocation.Select(TestName))) return;
 
-			if (PlatformInformation->GetFamily() == Platform::Families::Windows)
-			{
-				if (RequireStatic)
-					{ if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".lib"))) return; }
-				else if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".dll"))) return;
-			}
-			else
-			{
-				if (RequireStatic)
+				if (PlatformInformation->GetFamily() == Platform::Families::Windows)
 				{
-					if (ProcessLibraryLocation(TestLocation.Select("lib" + LibraryName + ".a"))) return;
-					if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".a"))) return;
+					if (RequireStatic)
+						{ if (ProcessLibraryLocation(TestLocation.Select(TestName + ".lib"))) return; }
+					else if (ProcessLibraryLocation(TestLocation.Select(TestName + ".dll"))) return;
 				}
 				else
 				{
-					if (ProcessLibraryLocation(TestLocation.Select("lib" + LibraryName + ".so"))) return;
-					if (ProcessLibraryLocation(TestLocation.Select(LibraryName + ".so"))) return;
+					if (RequireStatic)
+					{
+						if (ProcessLibraryLocation(TestLocation.Select("lib" + TestName + ".a"))) return;
+						if (ProcessLibraryLocation(TestLocation.Select(TestName + ".a"))) return;
+					}
+					else
+					{
+						if (ProcessLibraryLocation(TestLocation.Select("lib" + TestName + ".so"))) return;
+						if (ProcessLibraryLocation(TestLocation.Select(TestName + ".so"))) return;
+					}
 				}
 			}
 		}

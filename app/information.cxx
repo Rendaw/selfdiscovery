@@ -13,6 +13,9 @@ String GetArgument(Script &State, String const &Name)
 
 std::vector<String> GetVariableArgument(Script &State, String const &Name)
 {
+#ifndef NDEBUG
+	unsigned int const InitialHeight = State.Height();
+#endif
 	State.AssertTable("Arguments must be passed to this function in a table.  It appears that you passed in a " + State.GetType() + ".");
 	State.PullElement(Name);
 	std::vector<String> Out;
@@ -26,9 +29,15 @@ std::vector<String> GetVariableArgument(Script &State, String const &Name)
 	};
 	if (State.IsString()) AddItem();
 	else if (State.IsTable()) 
+	{
 		State.Iterate([&](Script &) { AddItem(); return true; });
+		State.Pop();
+	}
 	if (Out.empty())
 		throw Error::Input("Variable length argument " + Name + " is empty.  It must have at least one value.");
+#ifndef NDEBUG
+	assert(State.Height() == InitialHeight);
+#endif
 	return Out;
 }
 

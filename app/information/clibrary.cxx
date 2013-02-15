@@ -24,10 +24,10 @@ void CLibrary::DisplayControllerHelp()
 
 void CLibrary::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 {
-	String LibraryName = GetArgument(State, "Name");
+	String LibraryName = GetVariableArgument(State, "Name")[0];
 	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "=LOCATION",
 		MemoryStream() << "Overrides the location of library " << LibraryName << ".  This path should include both the absolute directory and the filename.  Unless the include location is separately overridden, the include path will be deduced from LOCATION.");
-	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-Includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".");
+	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-Includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".  LOCATION can also be a comma separated list of locations.");
 }
 
 static std::vector<DirectoryPath> SplitEnvironmentVariableParts(String const &Raw)
@@ -156,7 +156,16 @@ void CLibrary::Respond(Script &State)
 
 	auto FindIncludeLocation = [&](FilePath const &LibraryPath)
 	{
-		if (OverrideIncludes.first) State.PushString(OverrideIncludes.second);
+		if (OverrideIncludes.first) 
+		{
+			StringSplitter OverrideSplits(',', true);
+			OverrideSplits.Process(OverrideIncludes.second);
+			while (!OverrideSplits.Results().empty())
+			{
+				AddIncludeLocation(OverrideSplits.Results().front());
+				OverrideSplits.Results().pop();
+			}
+		}
 		else 
 		{
 			DirectoryPath ResultPath = LibraryPath.Directory();

@@ -261,18 +261,20 @@ void CLibrary::Respond(Script &State)
 				StringSplitter IncludeSplits({' '}, true);
 				while (!IncludeFinder.Out.HasFailed())
 				{
-					IncludeSplits.Process(IncludeFinder.Out.ReadLine());
+					String Line = IncludeFinder.Out.ReadLine();
+					IncludeSplits.Process(Line);
 					if (Verbose)
-						StandardStream << "Include pkg-config output: " << IncludeFinder.Out.ReadLine() << "\n" << OutputStream::Flush();
+						StandardStream << "Include pkg-config output: " << Line << "\n" << OutputStream::Flush();
 				}
 				
 				Subprocess LibraryFinder(PkgConfigPath->AsAbsoluteString(), {"--libs", TestName});
 				StringSplitter LibrarySplits({' '}, true);
 				while (!LibraryFinder.Out.HasFailed())
 				{
-					LibrarySplits.Process(LibraryFinder.Out.ReadLine());
+					String Line = LibraryFinder.Out.ReadLine();
+					LibrarySplits.Process(Line);
 					if (Verbose)
-						StandardStream << "Library pkg-config output: " << LibraryFinder.Out.ReadLine() << "\n" << OutputStream::Flush();
+						StandardStream << "Library pkg-config output: " << Line << "\n" << OutputStream::Flush();
 				}
 
 				if ((IncludeFinder.GetResult() != 0) || 

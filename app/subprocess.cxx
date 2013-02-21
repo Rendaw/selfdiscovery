@@ -17,7 +17,7 @@ extern bool Verbose;
 
 SubprocessOutStream::SubprocessOutStream(void) : FileDescriptor(-1), Failed(true) {}
 
-SubprocessOutStream::~SubprocessOutStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
+SubprocessOutStream::~SubprocessOutStream(void) { /*if (FileDescriptor >= 0) close(FileDescriptor);*/ }
 
 void SubprocessOutStream::Associate(int FileDescriptor)
 {
@@ -64,7 +64,7 @@ void SubprocessOutStream::ReadToEnd(void)
 
 SubprocessInStream::SubprocessInStream(void) : FileDescriptor(-1) {}
 
-SubprocessInStream::~SubprocessInStream(void) { if (FileDescriptor >= 0) close(FileDescriptor); }
+SubprocessInStream::~SubprocessInStream(void) { /*if (FileDescriptor >= 0) close(FileDescriptor);*/ }
 
 void SubprocessInStream::Associate(int FileDescriptor)
 {
@@ -94,6 +94,8 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 		for (auto &Argument : Arguments) StandardStream << "\"" << Argument << "\" ";
 		StandardStream << "\n" << OutputStream::Flush();
 	}
+
+	fflush(nullptr); // Write everything before forking so buffered data isn't written twice
 #ifdef WINDOWS
 	HANDLE ChildInHandle = NULL;
 	HANDLE ParentOutHandle = NULL;

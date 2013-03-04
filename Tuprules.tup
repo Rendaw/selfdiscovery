@@ -27,8 +27,8 @@ CommandPrefix = ''
 CommandSuffix = ''
 if tup.getconfig('TUP_PLATFORM') == 'win32'
 then
-	CommandPrefix = 'bash -c \''
-	CommandSuffix = '\''
+	CommandPrefix = ''
+	CommandSuffix = ''
 end
 
 Rule = 

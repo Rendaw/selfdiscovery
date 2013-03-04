@@ -130,6 +130,7 @@ Subprocess::Subprocess(FilePath const &Execute, std::vector<String> const &Argum
 	ChildStartupInformation.dwFlags |= STARTF_USESTDHANDLES;	
  
 	MemoryStream ArgumentConcatenation; 
+	ArgumentConcatenation << Execute.AsAbsoluteString();
 	for (auto &Argument : Arguments) ArgumentConcatenation << " \"" << Argument << "\"";
 	NativeString NativeArguments = AsNativeString(ArgumentConcatenation);
 	std::vector<wchar_t> NativeArgumentsWritableBuffer;

@@ -22,7 +22,7 @@ static void DumpProjectInstallDirectory(Script &State, String const &Project)
 	if (Result != S_OK)
 		throw InteractionError("Couldn't locate executable installation directory!  Received error " + AsString(Result));
 	State.PushTable();
-	State.PushString(AsString(PathResult) + "\\" + Project);
+	State.PushString(AsString(NativeString(reinterpret_cast<char16_t *>(PathResult))) + "\\" + Project);
 	State.PutElement("Location");
 }
 #endif
@@ -226,7 +226,7 @@ void InstallGlobalConfigDirectory::Respond(Script &State)
 	HRESULT Result = SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, PathResult);
 	if (Result != S_OK)
 		throw InteractionError("Couldn't find global config directory!  Received error " + AsString(Result));
-	ReturnLocation(State, AsString(PathResult));
+	ReturnLocation(State, AsString(NativeString(reinterpret_cast<char16_t *>(PathResult))));
 #else
 	ReturnLocation(State, "/usr/etc");
 #endif

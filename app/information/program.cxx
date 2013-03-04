@@ -11,15 +11,15 @@ String Program::GetIdentifier(void) { return "Program"; }
 
 void Program::DisplayControllerHelp(void)
 {
-	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME, FLAGS...}\n"
+	StandardStream << "\tDiscover." << GetIdentifier() << "{Name = NAME | {NAME...}, FLAGS...}\n"
 		"\tResult: {Location = LOCATION}\n"
-		"\tLocates program NAME and returns the LOCATION.  If FLAGS contains Optional, failure to locate the program will not terminate discovery, but nil will be returned rather than a table.\n"
+		"\tLocates program NAME and returns the LOCATION, include the executable name.  If NAME is plural, the location of the first found NAME will be returned.  If FLAGS contains Optional, failure to locate the program will not terminate discovery, but nil will be returned rather than a table.\n"
 		"\n";
 }
 
 void Program::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems) 
 {
-	String ProgramName = GetArgument(State, "Name");
+	String ProgramName = GetVariableArgument(State, "Name")[0];
 	HelpItems.Add(GetIdentifier() + "-" + ProgramName + "=LOCATION", "Override the detected location of " + ProgramName + " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.");
 }
 
@@ -52,7 +52,8 @@ Program::Program(void) : Paths(GetPathParts())
 
 void Program::Respond(Script &State)
 {
-	String ProgramName = GetArgument(State, "Name");
+	auto ProgramNames = GetVariableArgument(State, "Name");
+	String ProgramName = ProgramNames[0];
 
 
 	std::pair<bool, String> Override = FindConfiguration(GetIdentifier() + "-" + ProgramName);
@@ -66,7 +67,12 @@ void Program::Respond(Script &State)
 		return;
 	}
 
-	FilePath *Found = FindProgram(ProgramName);
+	FilePath *Found = nullptr;
+	for (auto const &TestName : ProgramNames)
+	{
+		Found = FindProgram(TestName);
+		if (Found != nullptr) break;
+	}
 	if ((Found == nullptr) && !GetFlag(State, "Optional"))
 		throw InteractionError("Failed to find required program \"" + ProgramName + "\"");
 	
@@ -107,6 +113,15 @@ FilePath *Program::FindProgram(String const &ProgramName)
 					Programs[ProgramName] = new FilePath(NextFilePath);
 					break;
 				}
+#ifdef _WIN32
+				NextFilePath = NextPath.Select(ProgramName + ".exe");
+				if (NextFilePath.Exists())
+				{
+					if (Verbose) StandardStream << "Found program \"" << ProgramName << "\" at \"" << NextFilePath << "\".\n" << OutputStream::Flush();
+					Programs[ProgramName] = new FilePath(NextFilePath);
+					break;
+				}
+#endif
 			}
 		}
 		FoundProgram = Programs.find(ProgramName);

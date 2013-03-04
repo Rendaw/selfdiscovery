@@ -33,7 +33,13 @@ void CLibrary::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
 static std::vector<DirectoryPath> SplitEnvironmentVariableParts(String const &Raw)
 {
 	std::vector<DirectoryPath> Out;
-	std::queue<String> Parts = StringSplitter({':'}, true).Process(Raw).Results();
+	std::queue<String> Parts = StringSplitter(
+#ifdef _WIN32
+			{';'}, 
+#else
+			{':'}, 
+#endif
+			true).Process(Raw).Results();
 	while (!Parts.empty())
 	{
 		Out.push_back(DirectoryPath::Qualify(Parts.front()));
@@ -77,6 +83,12 @@ static std::vector<DirectoryPath> GatherTestLocations(void)
 
 	// Try system directories
 #ifdef _WIN32
+	char const *PATHPath = getenv("PATH");
+	if (PATHPath != nullptr)
+	{
+		auto NewParts = SplitEnvironmentVariableParts(PATHPath);
+		TestLocations.insert(TestLocations.end(), NewParts.begin(), NewParts.end());
+	}
 #else
 	for (auto &PlatformBase : std::vector<String>({"", "/usr", "/usr/local", "/opt"}))
 	{
@@ -224,8 +236,15 @@ void CLibrary::Respond(Script &State)
 				if (PlatformInformation->GetFamily() == Platform::Families::Windows)
 				{
 					if (RequireStatic)
-						{ if (ProcessLibraryLocation(TestLocation.Select(TestName + ".lib"))) break; }
-					else if (ProcessLibraryLocation(TestLocation.Select(TestName + ".dll"))) break;
+					{ 
+						if (ProcessLibraryLocation(TestLocation.Select(TestName + ".lib"))) break; 
+						if (ProcessLibraryLocation(TestLocation.Select("lib" + TestName + ".lib"))) break; 
+					}
+					else
+					{
+						if (ProcessLibraryLocation(TestLocation.Select(TestName + ".dll"))) break;
+						if (ProcessLibraryLocation(TestLocation.Select("lib" + TestName + ".dll"))) break;
+					}
 				}
 				else
 				{

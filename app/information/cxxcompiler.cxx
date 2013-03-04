@@ -137,10 +137,6 @@ void CXXCompiler::Respond(Script &State)
 		}))
 	{
 		FilePath *FoundProgram = ProgramInformation->FindProgram(ProgramName);
-#ifdef WINDOWS
-		if (FoundProgram == nullptr) FoundProgram = ProgramInformation->FindProgram(ProgramName + ".exe");
-		if (FoundProgram == nullptr) FoundProgram = ProgramInformation->FindProgram(ProgramName + ".EXE");
-#endif
 		if ((FoundProgram != nullptr) && (TestCompiler(*FoundProgram)))
 			return;
 	}

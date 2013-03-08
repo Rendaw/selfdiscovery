@@ -16,9 +16,7 @@ void Version::DisplayControllerHelp(void)
 		"\tIf VERSION is specified, asserts that CURRENTVERSION is compatible with VERSION.  If the controller specified version is incompatible, this program aborts.  Returns the current version of this program as CURRENTVERSION.  This may change the behavior of the program to improve compatibility.\n\n";
 }
 
-void Version::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems) {}
-
-void Version::Respond(Script &State)
+void Version::Respond(Script &State, HelpItemCollector *)
 {
 	if (State.TryElement("Version"))
 	{

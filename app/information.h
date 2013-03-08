@@ -35,8 +35,7 @@ namespace Information
 			virtual ~Anchor(void);
 			virtual String GetIdentifier(void) = 0;
 			virtual void DisplayControllerHelp(void) = 0;
-			virtual Script::Function GetUserHelpCallback(HelpItemCollector &HelpItems) = 0;
-			virtual Script::Function GetCallback(void) = 0;
+			virtual Script::Function GetCallback(HelpItemCollector *HelpItems = nullptr) = 0;
 	};
 
 	template <typename ItemClass> class AnchorImplementation : public Anchor
@@ -50,23 +49,14 @@ namespace Information
 			void DisplayControllerHelp(void) override
 				{ ItemClass::DisplayControllerHelp(); }
 			
-			Script::Function GetUserHelpCallback(HelpItemCollector &HelpItems) override
+			Script::Function GetCallback(HelpItemCollector *HelpItems) override
 			{
-				return [&](Script State) -> int
-				{
-					ItemClass::DisplayUserHelp(State, HelpItems);
-					return 0;
-				};
-			}
-
-			Script::Function GetCallback(void) override
-			{
-				return [&](Script State) -> int
+				return [&, HelpItems](Script State) -> int
 				{
 					if (AnchoredItem == nullptr) AnchoredItem = new ItemClass;
 					try 
 					{
-						AnchoredItem->Respond(State);
+						AnchoredItem->Respond(State, HelpItems);
 						assert(State.IsTable());
 						if (State.IsEmpty())
 						{
@@ -87,8 +77,12 @@ namespace Information
 					}
 					catch (InteractionError &Failure)
 					{
-						StandardErrorStream << Failure.Explanation << "\n" << OutputStream::Flush();
-						throw Error::System("Information gathering failed: " + Failure.Explanation);
+						if (HelpItems == nullptr)
+						{
+							StandardErrorStream << Failure.Explanation << "\n" << OutputStream::Flush();
+							throw Error::System("Information gathering failed: " + Failure.Explanation);
+						}
+						return 0;
 					}
 				};
 			}

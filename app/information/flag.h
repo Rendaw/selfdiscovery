@@ -8,8 +8,7 @@ class Flag
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 };
 
 #endif // FLAG_H

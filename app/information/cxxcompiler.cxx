@@ -68,18 +68,18 @@ void CXXCompiler::DisplayControllerHelp(void)
 		"\n";
 }
 
-void CXXCompiler::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
-{
-	HelpItems.Add(GetIdentifier() + "=PATH", String("Override the detected C++ compiler.") + (GetFlag(State, SupportFlags::Generation2011) ? "  The compiler must support C++11." : ""));
-	HelpItems.Add(GetIdentifier() + "Class=CLASS", String("Override the detected C++ compiler class.  Standard values of CLASS are: " + PrintCompilerClasses()));
-}
-
 String const CXX11Example = "#include <functional>\nint main(int argc, char **argv) { std::function<void(void)> a; return 0; }";
 
-void CXXCompiler::Respond(Script &State)
+void CXXCompiler::Respond(Script &State, HelpItemCollector *HelpItems)
 {
 	bool RequireCXX11 = GetFlag(State, SupportFlags::Generation2011);
 	ClearArguments(State);
+
+	if (HelpItems != nullptr)
+	{
+		HelpItems->Add(GetIdentifier() + "=PATH", String("Override the detected C++ compiler.") + (RequireCXX11 ? "  The compiler must support C++11." : ""));
+		HelpItems->Add(GetIdentifier() + "Class=CLASS", String("Override the detected C++ compiler class.  Standard values of CLASS are: " + PrintCompilerClasses()));
+	}
 
 	State.PushTable();
 	

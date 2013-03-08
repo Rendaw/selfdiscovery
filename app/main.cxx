@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 				"\tselfdiscovery CONTROLLER CONFIGURATION...\n"
 				"\n"
 				"\tThis program gathers information about your system for a controller script.  Generally, this is used by software build scripts to configure themselves for your system.  The controller script filename is specified by CONTROLLER.  The controller tells this program which information it should gather.\n"
-				"\tCONFIGURATION... can be any number of the following values: Help, ControllerHelp, Verbose.  Help displays this message.  ControllerHelp displays documentation for writing controller scripts.  Verbose displays messages while discovery is in progress that are intended to clarify how and what information is being found.  If you specify CONTROLLER as well as Help, additional flags that can be used to override or guide information discovery will be listed below.\n"
+				"\tCONFIGURATION... can be any number of the following values in addition to the items in the next section: Help, ControllerHelp, Verbose.  Help displays this message.  ControllerHelp displays documentation for writing controller scripts.  Verbose displays messages while discovery is in progress that are intended to clarify how and what information is being found.  If you specify CONTROLLER as well as Help, additional flags that can be used to override or guide information discovery will be listed below.\n"
 				"\tAny values you can specify in CONFIGURATION... can also be placed in configuration files that will be automatically loaded.  Only one value may be specified per line.  The values loaded from the configuration files will supplement the CONFIGURATION... specified in the command line, but have lower precedence than the command line values.  The configuration files automatically loaded are, by increasing precedence: \n";
 			for (auto &ConfigurationFilePath : ConfigurationFilePaths)
 				StandardStream << "\t" << ConfigurationFilePath << "\n";
@@ -157,9 +157,8 @@ int main(int argc, char **argv)
 			
 		for (auto &InformationItem : InformationItems)
 		{
-			if (RunMode == RunModes::Help)
-				ControlScript.PushFunction(InformationItem->GetUserHelpCallback(HelpItems));
-			else ControlScript.PushFunction(InformationItem->GetCallback());
+			ControlScript.PushFunction(InformationItem->GetCallback(
+				RunMode == RunModes::Help ? &HelpItems : nullptr));
 			ControlScript.PutElement(InformationItem->GetIdentifier());
 		}
 

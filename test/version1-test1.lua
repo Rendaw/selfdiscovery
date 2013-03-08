@@ -1,6 +1,6 @@
 #!/usr/bin/lua
 Success, ResultType, Result = 
-	os.execute('../variant-debug/app/build/selfdiscovery version1-test1-controller.lua' ..
+	os.execute('../variant-debug/app/build/selfdiscovery version1-test1-controller.lua Verbose' ..
 	' Flag1 Flag2=\"Flag 2\nvalue\"' ..
 	' PlatformFamily=linux PlatformMember=debian Arch=32' ..
 	' InstallExecutableDirectory="Executable location"' ..

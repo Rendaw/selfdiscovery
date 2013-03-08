@@ -138,7 +138,7 @@ static String PrintEnumerations(void)
 	return MemoryStream() << "\tAllowed FAMILY and MEMBER values follow in the format \"FAMILY: MEMBER, MEMBER...\".\n"
 		"\t" << Platform::Families::Windows << ": " << Platform::Members::Windows2000 << ", " << Platform::Members::WindowsXP << ", " << Platform::Members::WindowsServer2003 << ", " << Platform::Members::WindowsVista << ", " << Platform::Members::WindowsServer2008 << ", " << Platform::Members::Windows7 << ", " << Platform::Members::Windows8 << ", " << Platform::Members::WindowsServer2012 << "\n"
 		"\t" << Platform::Families::Linux << ": " << Platform::Members::LinuxDebian << ", " << Platform::Members::LinuxArch << "\n"
-		"\t" << Platform::Families::BSD << ": " << Platform::Members::OpenBSD << ", " << Platform::Members::FreeBSD << ", " << Platform::Members::NetBSD << "\n";
+		"\t" << Platform::Families::BSD << ": " << Platform::Members::OpenBSD << ", " << Platform::Members::FreeBSD << ", " << Platform::Members::NetBSD;
 
 }
 		
@@ -147,20 +147,19 @@ void Platform::DisplayControllerHelp(void)
 	StandardStream << "\tDiscover." << GetIdentifier() << "{}\n"
 		"\tResult: {Family = FAMILY, Member = MEMBER, Arch = ARCH}\n"
 		"\tDetermines the target operating system and architecture.  FAMILY specifies broadly the type of operating system, whereas MEMBER is the specific distribution or generation of the family.  ARCH is the maximum bit depth for memory addresses on the system.\n";
-	StandardStream << PrintEnumerations();
+	StandardStream << PrintEnumerations() << "\n";
 	StandardStream << "\tArch=32|64\n"
 		"\n";
 }
 
-void Platform::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
+void Platform::Respond(Script &State, HelpItemCollector *HelpItems)
 {
-	HelpItems.Add("PlatformFamily=FAMILY", "Overrides the detected platform family with FAMILY.");
-	HelpItems.Add("PlatformMember=MEMBER", "Overrides the detected platform family and member with FAMILY and MEMBER.\n" + PrintEnumerations());
-	HelpItems.Add("Arch=32|64", "Overrides the detected architecture.  This may also affect installation directories and the like.");
-}
-
-void Platform::Respond(Script &State)
-{
+	if (HelpItems != nullptr)
+	{
+		HelpItems->Add("PlatformFamily=FAMILY", "Overrides the detected platform family with FAMILY.");
+		HelpItems->Add("PlatformMember=MEMBER", "Overrides the detected platform family and member with FAMILY and MEMBER.\n" + PrintEnumerations());
+		HelpItems->Add("Arch=32|64", "Overrides the detected architecture.  This may also affect installation directories and the like.");
+	}
 	State.PushTable();
 	State.PushString(Family);
 	State.PutElement("Family");

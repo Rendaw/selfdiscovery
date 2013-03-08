@@ -8,8 +8,7 @@ class InstallExecutableDirectory
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 };
 
 class InstallLibraryDirectory
@@ -17,8 +16,7 @@ class InstallLibraryDirectory
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 };
 
 class InstallDataDirectory
@@ -26,8 +24,7 @@ class InstallDataDirectory
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 };
 
 class InstallGlobalConfigDirectory
@@ -35,8 +32,7 @@ class InstallGlobalConfigDirectory
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 };
 
 #endif // LOCATION_H

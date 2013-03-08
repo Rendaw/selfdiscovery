@@ -14,18 +14,17 @@ void Flag::DisplayControllerHelp(void)
 		"\tDescribes a flag a user may specify on the configuration command line.  If the user specifies the flag, PRESENT is \"true\", otherwise \"false\".  If the user specifies the flag in the form NAME=VALUE, VALUE will also be returned.  If HASVALUE is specified as true, the user help will indicate that this flag should receive a value.\n\n";
 }
 
-void Flag::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
+void Flag::Respond(Script &State, HelpItemCollector *HelpItems)
 {
 	String FlagName = GetArgument(State, "Name");
-	String FlagDescription = GetOptionalArgument(State, "Description");
-	bool HasValue = GetFlag(State, "HasValue");
-	HelpItems.Add(FlagName + (HasValue ? "(=VALUE)\n" : ""), MemoryStream() << "Enables flag \"" << FlagName << "\"" << (HasValue ? " (and sets the value to VALUE)." : "") << "  " << FlagDescription);
-}
-
-void Flag::Respond(Script &State)
-{
-	String FlagName = GetArgument(State, "Name");
+	if (HelpItems != nullptr) 
+	{
+		bool HasValue = GetFlag(State, "HasValue");
+		String FlagDescription = GetOptionalArgument(State, "Description");
+		HelpItems->Add(FlagName + (HasValue ? "(=VALUE)\n" : ""), MemoryStream() << "Enables flag \"" << FlagName << "\"" << (HasValue ? " (and sets the value to VALUE)." : "") << "  " << FlagDescription);
+	}
 	ClearArguments(State);
+
 	std::pair<bool, String> Flag = FindConfiguration(FlagName);
 	State.PushTable();
 	State.PushBoolean(Flag.first);

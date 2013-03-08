@@ -12,8 +12,7 @@ class Program
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 		Program(void);
 		FilePath *FindProgram(String const &ProgramName);
 	private:

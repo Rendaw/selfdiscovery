@@ -17,12 +17,6 @@ void Program::DisplayControllerHelp(void)
 		"\n";
 }
 
-void Program::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems) 
-{
-	String ProgramName = GetVariableArgument(State, "Name")[0];
-	HelpItems.Add(GetIdentifier() + "-" + ProgramName + "=LOCATION", "Override the detected location of " + ProgramName + " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.");
-}
-
 static std::vector<DirectoryPath> GetPathParts(void)
 {
 	std::vector<DirectoryPath> Out;
@@ -50,11 +44,15 @@ Program::Program(void) : Paths(GetPathParts())
 	}
 }
 
-void Program::Respond(Script &State)
+void Program::Respond(Script &State, HelpItemCollector *HelpItems)
 {
 	auto ProgramNames = GetVariableArgument(State, "Name");
 	String ProgramName = ProgramNames[0];
-
+	
+	if (HelpItems != nullptr)
+	{
+		HelpItems->Add(GetIdentifier() + "-" + ProgramName + "=LOCATION", "Override the detected location of " + ProgramName + " with the program at LOCATION.  The executable names do not have to match, so substituting cl.exe for gcc, for instance, would not be rejected.");
+	}
 
 	std::pair<bool, String> Override = FindConfiguration(GetIdentifier() + "-" + ProgramName);
 	if (Override.first)

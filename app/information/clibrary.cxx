@@ -22,14 +22,6 @@ void CLibrary::DisplayControllerHelp()
 		"\n";
 }
 
-void CLibrary::DisplayUserHelp(Script &State, HelpItemCollector &HelpItems)
-{
-	String LibraryName = GetVariableArgument(State, "Name")[0];
-	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "=LOCATION",
-		MemoryStream() << "Overrides the location of library " << LibraryName << ".  This path should include both the absolute directory and the filename.  Unless the include location is separately overridden, the include path will be deduced from LOCATION.");
-	HelpItems.Add(GetIdentifier() + "-" + LibraryName + "-Includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".  LOCATION can also be a comma separated list of locations.");
-}
-
 static std::vector<DirectoryPath> SplitEnvironmentVariableParts(String const &Raw)
 {
 	std::vector<DirectoryPath> Out;
@@ -128,7 +120,7 @@ CLibrary::CLibrary(void) : TestLocations(GatherTestLocations())
 	}
 }
 
-void CLibrary::Respond(Script &State)
+void CLibrary::Respond(Script &State, HelpItemCollector *HelpItems)
 {
 	std::vector<String> LibraryNames = GetVariableArgument(State, "Name");
 	bool RequireStatic = GetFlag(State, "Static");
@@ -136,6 +128,13 @@ void CLibrary::Respond(Script &State)
 	ClearArguments(State);
 
 	String const LibraryName = LibraryNames[0];
+	
+	if (HelpItems != nullptr)
+	{
+		HelpItems->Add(GetIdentifier() + "-" + LibraryName + "=LOCATION",
+			MemoryStream() << "Overrides the location of library " << LibraryName << ".  This path should include both the absolute directory and the filename.  Unless the include location is separately overridden, the include path will be deduced from LOCATION.");
+		HelpItems->Add(GetIdentifier() + "-" + LibraryName + "-Includes=LOCATION", "Overrides the location of include files for library " + LibraryName + ".  LOCATION can also be a comma separated list of locations.");
+	}
 
 	std::pair<bool, String> OverrideLibrary = FindConfiguration(GetIdentifier() + "-" + LibraryName),
 		OverrideIncludes = FindConfiguration(GetIdentifier() + "-" + LibraryName + "-Includes");
@@ -328,10 +327,15 @@ void CLibrary::Respond(Script &State)
 		}
 	}
 
-	if (!Found && !Optional)
-		throw InteractionError("Could not find required library " + LibraryName + ".  If you believe you have the library, check the help and specify the correct location on the command line.");
-
 	assert(State.Height() == 0);
+	if (!Found) 
+	{
+		if (!Optional)
+			throw InteractionError("Could not find required library " + LibraryName + ".  If you believe you have the library, check the help and specify the correct location on the command line.");
+		State.PushTable();
+		return;
+	}
+
 	State.PushTable();
 
 	State.PushTable();

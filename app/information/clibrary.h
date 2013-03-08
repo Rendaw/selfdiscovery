@@ -9,9 +9,8 @@ class CLibrary
 	public:
 		static String GetIdentifier(void);
 		static void DisplayControllerHelp(void);
-		static void DisplayUserHelp(Script &State, HelpItemCollector &HelpItems);
 		CLibrary(void);
-		void Respond(Script &State);
+		void Respond(Script &State, HelpItemCollector *HelpItems);
 	private:
 		std::vector<DirectoryPath> const TestLocations;
 };
